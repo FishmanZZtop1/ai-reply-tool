@@ -1,0 +1,792 @@
+@import "tailwindcss";
+
+/* ========================================
+   AI Reply - Aurora UI Style
+   White Background • Soft Gradients • Beautiful Blobs
+   ======================================== */
+
+@theme {
+    /* Aurora UI Color Palette - Light Theme */
+    --color-aurora-bg: #FFFFFF;
+    --color-aurora-bg-elevated: #FAFAFA;
+    --color-aurora-bg-card: #FFFFFF;
+    --color-aurora-bg-hover: #F5F5F5;
+
+    /* Primary Accent - Pink (Rebrand) */
+    --color-aurora-accent: #E413A2;
+    --color-aurora-accent-hover: #BE1087;
+    --color-aurora-accent-glow: rgba(228, 19, 162, 0.25);
+
+    /* Secondary - Sky Blue */
+    --color-aurora-blue: #38BDF8;
+    --color-aurora-blue-light: #7DD3FC;
+
+    /* Tertiary - Pink */
+    --color-aurora-pink: #EC4899;
+    --color-aurora-pink-light: #F472B6;
+
+    /* Gold for pricing */
+    --color-aurora-gold: #F59E0B;
+    --color-aurora-gold-light: #FCD34D;
+
+    /* Success */
+    --color-aurora-green: #10B981;
+
+    /* Borders */
+    --color-aurora-border: #E5E7EB;
+    --color-aurora-border-hover: #D1D5DB;
+    --color-aurora-border-accent: rgba(228, 19, 162, 0.3);
+
+    /* Text - Dark on Light */
+    --color-aurora-text: #111827;
+    --color-aurora-text-secondary: #6B7280;
+    --color-aurora-text-muted: #9CA3AF;
+
+    /* Shadows */
+    --shadow-aurora-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+    --shadow-aurora-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    --shadow-aurora-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    --shadow-aurora-card: 0 4px 20px rgba(0, 0, 0, 0.08);
+    --shadow-aurora-glow: 0 0 30px rgba(228, 19, 162, 0.3);
+
+    /* Border Radius */
+    --radius-aurora-sm: 8px;
+    --radius-aurora-md: 12px;
+    --radius-aurora-lg: 16px;
+    --radius-aurora-xl: 24px;
+    --radius-aurora-pill: 9999px;
+
+    /* Typography */
+    --font-aurora-display: 'Inter', -apple-system, system-ui, sans-serif;
+    --font-aurora-body: 'Inter', -apple-system, system-ui, sans-serif;
+
+    /* 
+     * ANIMATION SYSTEM
+     * Spring physics simulation for natural motion:
+     * - Fast response (150ms) for micro-interactions
+     * - Medium (300ms) for state changes  
+     * - Slow (500ms) for page transitions
+     * - Extra bounce curve overshoots for playful feel
+     */
+
+    /* Fast spring - buttons, chips (snappy with slight overshoot) */
+    --ease-spring-fast: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    --duration-fast: 250ms;
+
+    /* Medium spring - cards, panels (balanced) */
+    --ease-spring-medium: cubic-bezier(0.34, 1.56, 0.64, 1);
+    --duration-medium: 350ms;
+
+    /* Slow spring - modals, page elements (dramatic) */
+    --ease-spring-slow: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    --duration-slow: 500ms;
+
+    /* Smooth - for color/opacity without bounce */
+    --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+    --duration-smooth: 200ms;
+
+    /* Transition aliases used by legacy utility classes */
+    --transition-aurora: all var(--duration-medium) var(--ease-spring-medium);
+    --transition-aurora-bounce: all var(--duration-fast) var(--ease-spring-fast);
+}
+
+/* Base Styles */
+html {
+    scroll-behavior: smooth;
+}
+
+body {
+    font-family: var(--font-aurora-body);
+    background: var(--color-aurora-bg);
+    color: var(--color-aurora-text);
+    line-height: 1.6;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    html {
+        scroll-behavior: auto;
+    }
+
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* Brand Gradient */
+.bg-brand-gradient {
+    background: linear-gradient(to right, #E413A2, #FF789A);
+}
+
+/* ========================================
+   Aurora UI Animated Background
+   ======================================== */
+
+.aurora-background {
+    position: fixed;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+    z-index: 0;
+    background: #FFFFFF;
+}
+
+/* Aurora Blob Base Style - Exact 1:1 Copy */
+.aurora-blob {
+    position: absolute;
+    border-radius: 9999px;
+    filter: blur(80px);
+    opacity: 0.6;
+    animation: aurora-blob 20s ease-in-out infinite;
+    will-change: transform;
+}
+
+/* Blob 1 - Soft Pink/Rose - Top Left */
+.aurora-blob-1 {
+    width: 600px;
+    height: 600px;
+    background: linear-gradient(180deg, #FBCFE8 0%, #F472B6 50%, #EC4899 100%);
+    top: -10%;
+    left: -5%;
+    animation-delay: 0s;
+}
+
+/* Blob 2 - Warm Pink/Orange - Bottom Right */
+.aurora-blob-2 {
+    width: 700px;
+    height: 700px;
+    background: linear-gradient(180deg, #FF789A 0%, #FDBA74 50%, #FB923C 100%);
+    bottom: -15%;
+    right: -10%;
+    animation-delay: 5s;
+}
+
+/* Blob 3 - Soft Pink - Center Right */
+.aurora-blob-3 {
+    width: 500px;
+    height: 500px;
+    background: linear-gradient(180deg, #FBCFE8 0%, #F9A8D4 50%, #F472B6 100%);
+    top: 30%;
+    right: 20%;
+    animation-delay: 10s;
+}
+
+/* Mobile Optimizations - Reduce GPU load */
+@media (max-width: 768px) {
+    .aurora-blob {
+        filter: blur(40px);
+        /* Reduce blur radius significantly */
+        opacity: 0.5;
+        /* Slightly reduce opacity */
+        animation-duration: 25s;
+        /* Slower animation is less taxing */
+    }
+
+    .aurora-blob-1 {
+        width: 300px;
+        height: 300px;
+    }
+
+    .aurora-blob-2 {
+        bottom: auto;
+        top: 60%;
+        width: 350px;
+        height: 350px;
+    }
+
+    .aurora-blob-3 {
+        width: 250px;
+        height: 250px;
+    }
+}
+
+/* Aurora Blob Animation - Slow Organic Movement */
+@keyframes aurora-blob {
+
+    0%,
+    100% {
+        transform: translate(0, 0) scale(1) rotate(0deg);
+    }
+
+    25% {
+        transform: translate(50px, -30px) scale(1.1) rotate(5deg);
+    }
+
+    50% {
+        transform: translate(-30px, 50px) scale(0.9) rotate(-5deg);
+    }
+
+    75% {
+        transform: translate(30px, 20px) scale(1.05) rotate(3deg);
+    }
+}
+
+/* ========================================
+   Keyframe Animations
+   ======================================== */
+
+@keyframes slide-up {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes scale-in {
+    from {
+        opacity: 0;
+        transform: scale(0.9);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+@keyframes fade-in {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+/* ========================================
+   Aurora UI Components
+   ========================================*/
+
+
+/* Aurora Card - Clean white with subtle shadow */
+.aurora-card {
+    background: rgba(255, 255, 255, 0.8);
+    border: 1px solid var(--color-aurora-border);
+    border-radius: var(--radius-aurora-xl);
+    box-shadow: var(--shadow-aurora-card);
+    backdrop-filter: blur(20px);
+    position: relative;
+    overflow: hidden;
+}
+
+.aurora-card-solid {
+    background: var(--color-aurora-bg-card);
+}
+
+/* Primary Button - Spring animation with glow */
+.btn-aurora-primary {
+    background: linear-gradient(135deg, #E413A2 0%, #FF789A 100%);
+    color: white;
+    font-weight: 600;
+    font-size: 14px;
+    border: none;
+    border-radius: var(--radius-aurora-pill);
+    padding: 14px 32px;
+    cursor: pointer;
+    will-change: transform, box-shadow;
+    box-shadow:
+        0 4px 16px rgba(228, 19, 162, 0.35),
+        0 0 0 0 rgba(228, 19, 162, 0);
+    transition:
+        transform var(--duration-fast) var(--ease-spring-fast),
+        box-shadow var(--duration-medium) var(--ease-spring-medium),
+        background var(--duration-smooth) var(--ease-smooth);
+}
+
+.btn-aurora-primary:hover {
+    transform: translateY(-3px) scale(1.02);
+    box-shadow:
+        0 12px 32px rgba(228, 19, 162, 0.45),
+        0 0 0 4px rgba(228, 19, 162, 0.15);
+}
+
+.btn-aurora-primary:active {
+    transform: translateY(-1px) scale(0.98);
+    transition-duration: 100ms;
+}
+
+.btn-aurora-primary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: 0 4px 16px rgba(228, 19, 162, 0.2);
+}
+
+/* Secondary Button */
+.btn-aurora-secondary {
+    background: white;
+    color: var(--color-aurora-text);
+    font-weight: 600;
+    font-size: 14px;
+    border: 1px solid #E5E7EB;
+    border-radius: var(--radius-aurora-pill);
+    padding: 14px 32px;
+    cursor: pointer;
+    will-change: transform, box-shadow;
+    transition:
+        transform var(--duration-fast) var(--ease-spring-fast),
+        box-shadow var(--duration-medium) var(--ease-spring-medium),
+        border-color var(--duration-smooth) var(--ease-smooth);
+}
+
+.btn-aurora-secondary:hover {
+    transform: translateY(-2px);
+    border-color: #D1D5DB;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+}
+
+.btn-aurora-secondary:active {
+    transform: scale(0.98);
+    transition-duration: 100ms;
+}
+
+/* Ghost Button */
+.btn-aurora-ghost {
+    background: transparent;
+    color: var(--color-aurora-text-secondary);
+    font-weight: 500;
+    font-size: 14px;
+    border: none;
+    border-radius: var(--radius-aurora-pill);
+    padding: 10px 20px;
+    cursor: pointer;
+    transition:
+        transform var(--duration-fast) var(--ease-spring-fast),
+        background var(--duration-smooth) var(--ease-smooth),
+        color var(--duration-smooth) var(--ease-smooth);
+}
+
+.btn-aurora-ghost:hover {
+    background: #F3F4F6;
+    color: var(--color-aurora-text);
+    transform: translateY(-1px);
+}
+
+.btn-aurora-ghost:active {
+    transform: scale(0.97);
+}
+
+/* Chip - Spring animation with layered transitions */
+.chip-aurora {
+    padding: 10px 20px;
+    border-radius: var(--radius-aurora-pill);
+    font-size: 13px;
+    font-weight: 500;
+    border: 1px solid transparent;
+    cursor: pointer;
+    user-select: none;
+    will-change: transform, box-shadow;
+    /* Layered transitions: transform bounces, colors smooth */
+    transition:
+        transform var(--duration-fast) var(--ease-spring-fast),
+        box-shadow var(--duration-medium) var(--ease-spring-medium),
+        background var(--duration-smooth) var(--ease-smooth),
+        border-color var(--duration-smooth) var(--ease-smooth),
+        color var(--duration-smooth) var(--ease-smooth);
+}
+
+.chip-aurora-unselected {
+    background: #F3F4F6;
+    color: var(--color-aurora-text-secondary);
+    border-color: transparent;
+}
+
+.chip-aurora-unselected:hover {
+    background: #E5E7EB;
+    color: var(--color-aurora-text);
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+}
+
+.chip-aurora-unselected:active {
+    transform: scale(0.96);
+    transition-duration: 100ms;
+}
+
+/* Selected State - Bright gradient with animated glow */
+.chip-aurora-selected {
+    background: linear-gradient(135deg, #E413A2 0%, #FF789A 100%);
+    color: white;
+    border-color: transparent;
+    box-shadow:
+        0 4px 16px rgba(228, 19, 162, 0.4),
+        0 0 0 3px rgba(228, 19, 162, 0.15);
+    transform: scale(1.03);
+}
+
+.chip-aurora-selected:hover {
+    box-shadow:
+        0 8px 28px rgba(228, 19, 162, 0.5),
+        0 0 0 4px rgba(228, 19, 162, 0.2);
+    transform: scale(1.05);
+}
+
+/* Input - Light background */
+.input-aurora {
+    background: var(--color-aurora-bg-card);
+    border: 1px solid var(--color-aurora-border);
+    border-radius: var(--radius-aurora-md);
+    color: var(--color-aurora-text);
+    transition: var(--transition-aurora);
+}
+
+.input-aurora::placeholder {
+    color: var(--color-aurora-text-muted);
+}
+
+.input-aurora:focus {
+    outline: none;
+    border-color: var(--color-aurora-accent);
+    box-shadow: 0 0 0 3px var(--color-aurora-accent-glow);
+}
+
+/* Label Style - Pink/Accent uppercase */
+.label-aurora {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--color-aurora-accent);
+}
+
+/* Heading Style */
+.heading-aurora {
+    font-family: var(--font-aurora-display);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+    color: var(--color-aurora-text);
+}
+
+/* Text Gradient */
+.text-gradient-aurora {
+    background: linear-gradient(135deg, var(--color-aurora-accent) 0%, var(--color-aurora-pink) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+/* Loading Dots */
+.loading-dots span {
+    animation: bounce-dot 400ms infinite alternate;
+}
+
+.loading-dots span:nth-child(2) {
+    animation-delay: 100ms;
+}
+
+.loading-dots span:nth-child(3) {
+    animation-delay: 200ms;
+}
+
+@keyframes bounce-dot {
+    to {
+        transform: translateY(-3px);
+        opacity: 0.5;
+    }
+}
+
+/* Pagination */
+.page-nav-aurora {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-aurora-pill);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    transition: var(--transition-aurora);
+    background: var(--color-aurora-bg-card);
+    border: 1px solid var(--color-aurora-border);
+    color: var(--color-aurora-text-secondary);
+}
+
+.page-nav-aurora:hover:not(:disabled) {
+    background: var(--color-aurora-accent);
+    border-color: transparent;
+    color: white;
+}
+
+.page-nav-aurora:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+/* Page Dots */
+.page-dot-aurora {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--color-aurora-border);
+    transition: var(--transition-aurora);
+}
+
+.page-dot-aurora-active {
+    width: 24px;
+    border-radius: var(--radius-aurora-pill);
+    background: var(--color-aurora-accent);
+}
+
+/* No flash utility */
+.no-flash {
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+}
+
+/* Scrollbar - Light theme */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--color-aurora-border-hover);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--color-aurora-text-muted);
+}
+
+/* ========================================
+   Glass Morphism Styles
+   ======================================== */
+
+/* Frosted Glass Card */
+.glass-card {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    border-radius: var(--radius-aurora-xl);
+    box-shadow:
+        0 8px 32px rgba(0, 0, 0, 0.08),
+        inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+/* Liquid Glass - More translucent */
+.liquid-glass {
+    background: linear-gradient(135deg,
+            rgba(255, 255, 255, 0.8) 0%,
+            rgba(255, 255, 255, 0.4) 50%,
+            rgba(255, 255, 255, 0.6) 100%);
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    border-radius: var(--radius-aurora-xl);
+    box-shadow:
+        0 12px 40px rgba(0, 0, 0, 0.1),
+        inset 0 2px 0 rgba(255, 255, 255, 0.9),
+        inset 0 -1px 0 rgba(0, 0, 0, 0.05);
+}
+
+/* Glass Tag/Chip */
+.glass-tag {
+    background: rgba(255, 255, 255, 0.6);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    border-radius: var(--radius-aurora-pill);
+    padding: 10px 20px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--color-aurora-text);
+    transition: var(--transition-aurora-bounce);
+}
+
+.glass-tag:hover {
+    background: rgba(255, 255, 255, 0.85);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+}
+
+/* ========================================
+   Toggle Switch Styles - Spring Animation
+   ======================================== */
+
+.toggle-aurora {
+    position: relative;
+    width: 56px;
+    height: 30px;
+    border-radius: 15px;
+    cursor: pointer;
+    will-change: background, box-shadow;
+    transition:
+        background var(--duration-medium) var(--ease-spring-medium),
+        box-shadow var(--duration-medium) var(--ease-spring-medium);
+}
+
+.toggle-aurora-off {
+    background: #D1D5DB;
+}
+
+/* Toggle Switch */
+.toggle-aurora-on {
+    background: linear-gradient(135deg, #E413A2 0%, #FF789A 100%);
+    box-shadow:
+        0 4px 14px rgba(228, 19, 162, 0.4),
+        0 0 0 3px rgba(228, 19, 162, 0.15);
+}
+
+.toggle-aurora-knob {
+    position: absolute;
+    top: 3px;
+    width: 24px;
+    height: 24px;
+    background: white;
+    border-radius: 50%;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    will-change: transform;
+    transition: transform var(--duration-fast) var(--ease-spring-fast);
+}
+
+.toggle-aurora-off .toggle-aurora-knob {
+    transform: translateX(3px);
+}
+
+.toggle-aurora-on .toggle-aurora-knob {
+    transform: translateX(29px);
+}
+
+/* ========================================
+   Testimonial Card Styles
+   ======================================== */
+
+.testimonial-card {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    border-radius: var(--radius-aurora-xl);
+    padding: 24px;
+    transition: var(--transition-aurora);
+}
+
+.testimonial-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.12);
+}
+
+.testimonial-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--color-aurora-accent) 0%, var(--color-aurora-pink) 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    color: white;
+    box-shadow: 0 4px 12px rgba(228, 19, 162, 0.3);
+}
+
+/* ========================================
+   Pricing Card Styles
+   ======================================== */
+
+.pricing-card {
+    background: linear-gradient(160deg,
+            rgba(255, 255, 255, 0.9) 0%,
+            rgba(255, 255, 255, 0.6) 50%,
+            rgba(255, 255, 255, 0.8) 100%);
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    border-radius: var(--radius-aurora-xl);
+    padding: 28px;
+    transition: var(--transition-aurora);
+    position: relative;
+    overflow: hidden;
+}
+
+.pricing-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--color-aurora-accent), var(--color-aurora-pink));
+    opacity: 0;
+    transition: var(--transition-aurora);
+}
+
+.pricing-card:hover::before {
+    opacity: 1;
+}
+
+.pricing-card:hover {
+    transform: translateY(-6px);
+    box-shadow:
+        0 20px 60px rgba(0, 0, 0, 0.12),
+        0 0 0 1px rgba(228, 19, 162, 0.1);
+}
+
+.pricing-card-popular {
+    border: 2px solid var(--color-aurora-accent);
+    box-shadow: 0 12px 40px rgba(228, 19, 162, 0.2);
+}
+
+.pricing-card-popular::before {
+    opacity: 1;
+}
+
+/* Price Toggle */
+.price-toggle {
+    display: flex;
+    gap: 4px;
+    padding: 4px;
+    background: var(--color-aurora-bg-hover);
+    border-radius: var(--radius-aurora-pill);
+}
+
+.price-toggle-btn {
+    padding: 8px 16px;
+    border-radius: var(--radius-aurora-pill);
+    font-size: 12px;
+    font-weight: 600;
+    transition: var(--transition-aurora-bounce);
+    cursor: pointer;
+}
+
+.price-toggle-btn-active {
+    background: white;
+    color: var(--color-aurora-text);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.price-toggle-btn-inactive {
+    background: transparent;
+    color: var(--color-aurora-text-muted);
+}
+
+/* Countdown Timer */
+.countdown-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%);
+    border: 1px solid #F59E0B;
+    border-radius: var(--radius-aurora-pill);
+    font-size: 12px;
+    font-weight: 600;
+    color: #92400E;
+}
+
+/* Google Fonts Import */
