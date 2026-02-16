@@ -35,7 +35,22 @@ verify_jwt = false
 verify_jwt = false
 
 [functions."redeem-invite-code"]
-verify_jwt = true
+verify_jwt = false
 
 [functions."delete-account"]
-verify_jwt = true
+verify_jwt = false
+
+[functions."wallet"]
+verify_jwt = false
+
+[functions."ledger"]
+verify_jwt = false
+
+[functions."generate-reply"]
+verify_jwt = false
+
+[functions."create-checkout"]
+verify_jwt = false
+
+[functions."marketing-dispatch"]
+verify_jwt = false
