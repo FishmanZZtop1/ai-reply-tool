@@ -10,7 +10,7 @@ AI Reply is a Vite + React frontend with Supabase Edge Functions for auth, credi
 - Payments: Lemon Squeezy (checkout + webhook)
 - Marketing: Resend (welcome + 24h/72h reminders)
 - Policy/Consent: Termly links + cookie blocker script
-- Hosting: Cloudflare Pages (frontend) + Supabase (backend)
+- Hosting: GitHub Pages (frontend) + Supabase (backend)
 
 ## Environment Variables
 
@@ -88,11 +88,25 @@ supabase secrets set APP_BASE_URL=https://aireplytool.com MARKETING_CRON_SECRET=
 2. Configure webhook URL: `https://<project-ref>.supabase.co/functions/v1/lemon-webhook`.
 3. Use signing secret as `LEMON_WEBHOOK_SECRET`.
 
-## Cloudflare Pages
+## GitHub Pages + Cloudflare
 
-- Build command: `npm run build`
-- Build output directory: `dist`
-- Add all `VITE_*` env vars in Cloudflare project settings.
+1. Push this repo to GitHub (branch `main`).
+2. In GitHub repo settings:
+   - Enable Pages source via `GitHub Actions`.
+   - Add repository secrets:
+     - `VITE_SUPABASE_URL`
+     - `VITE_SUPABASE_ANON_KEY`
+     - `VITE_APP_URL`
+     - `VITE_TERMLY_PRIVACY_URL` (optional)
+     - `VITE_TERMLY_TERMS_URL` (optional)
+     - `VITE_TERMLY_COOKIE_URL` (optional)
+     - `VITE_TERMLY_WEBSITE_UUID` (optional)
+3. Workflow file is pre-configured: `.github/workflows/deploy-pages.yml`.
+4. Custom domain is pre-configured by `public/CNAME` as `aireplytool.com`.
+5. In Cloudflare DNS, create:
+   - `CNAME` record: `@` -> `<github-username>.github.io`
+   - `CNAME` record: `www` -> `<github-username>.github.io`
+   - Set SSL mode to `Full` (or `Full (strict)` after cert is ready).
 
 ## Notes
 
