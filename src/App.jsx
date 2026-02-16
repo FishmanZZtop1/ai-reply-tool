@@ -3,6 +3,7 @@ import { LazyMotion, MotionConfig, domAnimation, motion } from 'framer-motion'
 import Header from './components/Header'
 import Generator from './components/Generator'
 import Footer from './components/Footer'
+import CookieConsentBanner from './components/CookieConsentBanner'
 import ErrorBoundary from './components/ErrorBoundary'
 import FAQSection from './components/FAQSection'
 import SimpleBackground from './components/SimpleBackground'
@@ -303,6 +304,7 @@ function App() {
                         </main>
 
                         <Footer />
+                        <CookieConsentBanner />
                     </div>
 
                     <ErrorBoundary>
