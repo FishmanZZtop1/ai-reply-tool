@@ -31,15 +31,21 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Lint
+        run: npm run lint
+
+      - name: Test
+        run: npm run test
+
       - name: Build
         env:
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
-          VITE_APP_URL: ${{ secrets.VITE_APP_URL }}
-          VITE_TERMLY_PRIVACY_URL: ${{ secrets.VITE_TERMLY_PRIVACY_URL }}
-          VITE_TERMLY_TERMS_URL: ${{ secrets.VITE_TERMLY_TERMS_URL }}
-          VITE_TERMLY_COOKIE_URL: ${{ secrets.VITE_TERMLY_COOKIE_URL }}
-          VITE_TERMLY_WEBSITE_UUID: ${{ secrets.VITE_TERMLY_WEBSITE_UUID }}
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://xlkibhktnsorttppzdby.supabase.co' }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhsa2liaGt0bnNvcnR0cHB6ZGJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA5ODcyNjQsImV4cCI6MjA4NjU2MzI2NH0.c0sANNaJStSNnRjM954RRIdl3gPulQGSPO4WNSPEM3s' }}
+          VITE_APP_URL: ${{ secrets.VITE_APP_URL || 'https://aireplytool.com' }}
+          VITE_TERMLY_PRIVACY_URL: ${{ secrets.VITE_TERMLY_PRIVACY_URL || '/privacy-policy.html' }}
+          VITE_TERMLY_TERMS_URL: ${{ secrets.VITE_TERMLY_TERMS_URL || '/terms-of-service.html' }}
+          VITE_TERMLY_COOKIE_URL: ${{ secrets.VITE_TERMLY_COOKIE_URL || '/cookie-policy.html' }}
+          VITE_TERMLY_WEBSITE_UUID: ${{ secrets.VITE_TERMLY_WEBSITE_UUID || '' }}
         run: npm run build
 
       - name: Setup Pages
