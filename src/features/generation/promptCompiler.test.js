@@ -44,7 +44,7 @@ describe('prompt compiler', () => {
         })
 
         expect(payload.systemInstruction).toContain('Return exactly 3 replies')
-        expect(payload.userPrompt).toContain('Tone Style: 📋 Professional')
+        expect(payload.userPrompt).toContain('"style": "📋 Professional"')
         expect(payload.userPrompt).toContain('Additional Notes')
     })
 
@@ -64,7 +64,7 @@ describe('prompt compiler', () => {
             },
         })
 
-        expect(payload.userPrompt).toContain('Context Scene: Conference follow-up')
-        expect(payload.userPrompt).toContain('Sender Role: Potential investor')
+        expect(payload.userPrompt).toContain('"scene": "Conference follow-up"')
+        expect(payload.userPrompt).toContain('"role": "Potential investor"')
     })
 })
