@@ -99,7 +99,8 @@ Deno.serve(async (request) => {
       return errorResponse('LEMON_WEBHOOK_SECRET missing.', 500, 'missing_env')
     }
 
-    const signature = request.headers.get('X-Signature') || request.headers.get('x-signature') || ''
+    const signatureHeader = request.headers.get('X-Signature') || request.headers.get('x-signature') || ''
+    const signature = signatureHeader.replace(/^sha256=/i, '').trim().toLowerCase()
     if (!signature) {
       return errorResponse('Missing signature.', 401, 'invalid_signature')
     }

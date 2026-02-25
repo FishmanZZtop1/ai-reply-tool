@@ -12,6 +12,20 @@ function mapProvider(provider) {
     }
 }
 
+function mapAuthErrorMessage(message) {
+    const normalized = String(message || '').toLowerCase()
+    if (normalized.includes('provider is not enabled')) {
+        return '该登录方式暂未启用，请先使用邮箱登录，或联系管理员开启该登录方式。'
+    }
+    if (normalized.includes('redirect_to is not allowed')) {
+        return '登录回调地址未配置，请联系管理员检查 Supabase URL 白名单。'
+    }
+    if (!message) {
+        return '登录失败，请稍后重试。'
+    }
+    return message
+}
+
 export function useAuth() {
     const [session, setSession] = useState(null)
     const [profile, setProfile] = useState(null)
@@ -100,16 +114,27 @@ export function useAuth() {
 
         setError('')
 
-        const { error: authError } = await supabase.auth.signInWithOAuth({
+        const { data, error: authError } = await supabase.auth.signInWithOAuth({
             provider,
             options: {
                 redirectTo: import.meta.env.VITE_APP_URL || window.location.origin,
+                skipBrowserRedirect: true,
             },
         })
 
         if (authError) {
-            setError(authError.message)
+            setError(mapAuthErrorMessage(authError.message))
+            return { ok: false, error: mapAuthErrorMessage(authError.message) }
         }
+
+        if (!data?.url) {
+            const fallbackError = '登录服务响应异常，请稍后重试。'
+            setError(fallbackError)
+            return { ok: false, error: fallbackError }
+        }
+
+        window.location.assign(data.url)
+        return { ok: true }
     }, [])
 
     const signInWithEmail = useCallback(async (email) => {
@@ -128,8 +153,9 @@ export function useAuth() {
         })
 
         if (otpError) {
-            setError(otpError.message)
-            return { ok: false, error: otpError.message }
+            const mappedError = mapAuthErrorMessage(otpError.message)
+            setError(mappedError)
+            return { ok: false, error: mappedError }
         }
 
         return { ok: true }
