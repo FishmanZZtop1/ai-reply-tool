@@ -138,8 +138,10 @@ export function useAuth() {
         setError('')
 
         const providerEnabled = await isOAuthProviderEnabled(provider)
-        if (providerEnabled === false) {
-            const disabledMessage = `${providerName} 登录暂未启用，请先使用邮箱登录。`
+        if (providerEnabled !== true) {
+            const disabledMessage = providerEnabled === false
+                ? `${providerName} 登录暂未启用，请先使用邮箱登录。`
+                : `${providerName} 登录暂时不可用，请先使用邮箱登录。`
             setError(disabledMessage)
             return { ok: false, error: disabledMessage }
         }
