@@ -327,6 +327,7 @@ function App() {
                                     onOAuthLogin={auth.signInWithOAuth}
                                     onEmailLogin={auth.signInWithEmail}
                                     errorMessage={auth.error}
+                                    oauthProviders={auth.oauthProviders}
                                 />
                             )}
                             {showCreditsModal && (

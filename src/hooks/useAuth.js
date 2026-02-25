@@ -54,6 +54,10 @@ export function useAuth() {
     const [profile, setProfile] = useState(null)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState('')
+    const [oauthProviders, setOauthProviders] = useState({
+        google: null,
+        github: null,
+    })
 
     const user = session?.user ?? null
     const isAuthenticated = Boolean(user)
@@ -123,6 +127,28 @@ export function useAuth() {
         }
     }, [fetchProfile])
 
+    useEffect(() => {
+        let mounted = true
+
+        async function bootstrapOauthProviders() {
+            const settingsGoogle = await isOAuthProviderEnabled('google')
+            const settingsGithub = await isOAuthProviderEnabled('github')
+            if (!mounted) {
+                return
+            }
+            setOauthProviders({
+                google: settingsGoogle === true,
+                github: settingsGithub === true,
+            })
+        }
+
+        bootstrapOauthProviders()
+
+        return () => {
+            mounted = false
+        }
+    }, [])
+
     const signInWithOAuth = useCallback(async (providerName) => {
         if (!supabase) {
             setError('Supabase is not configured.')
@@ -137,7 +163,17 @@ export function useAuth() {
 
         setError('')
 
-        const providerEnabled = await isOAuthProviderEnabled(provider)
+        let providerEnabled = oauthProviders[provider]
+        if (providerEnabled !== true) {
+            providerEnabled = await isOAuthProviderEnabled(provider)
+            if (providerEnabled !== null) {
+                setOauthProviders((previous) => ({
+                    ...previous,
+                    [provider]: providerEnabled === true,
+                }))
+            }
+        }
+
         if (providerEnabled !== true) {
             const disabledMessage = providerEnabled === false
                 ? `${providerName} 登录暂未启用，请先使用邮箱登录。`
@@ -211,9 +247,10 @@ export function useAuth() {
         profile,
         loading,
         error,
+        oauthProviders,
         isAuthenticated,
         signInWithOAuth,
         signInWithEmail,
         signOut,
-    }), [error, isAuthenticated, loading, profile, session, signInWithEmail, signInWithOAuth, signOut, user])
+    }), [error, isAuthenticated, loading, oauthProviders, profile, session, signInWithEmail, signInWithOAuth, signOut, user])
 }
