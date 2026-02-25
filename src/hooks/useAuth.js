@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { onSessionChange, supabase } from '../lib/supabaseClient'
+import { onSessionChange, supabase, supabaseAnonKey, supabaseUrl } from '../lib/supabaseClient'
 
 function mapProvider(provider) {
     switch (provider) {
@@ -24,6 +24,29 @@ function mapAuthErrorMessage(message) {
         return '登录失败，请稍后重试。'
     }
     return message
+}
+
+async function isOAuthProviderEnabled(provider) {
+    if (!supabaseUrl || !supabaseAnonKey) {
+        return null
+    }
+
+    try {
+        const response = await fetch(`${supabaseUrl}/auth/v1/settings`, {
+            headers: {
+                apikey: supabaseAnonKey,
+            },
+        })
+
+        if (!response.ok) {
+            return null
+        }
+
+        const settings = await response.json()
+        return Boolean(settings?.external?.[provider])
+    } catch {
+        return null
+    }
 }
 
 export function useAuth() {
@@ -113,6 +136,13 @@ export function useAuth() {
         }
 
         setError('')
+
+        const providerEnabled = await isOAuthProviderEnabled(provider)
+        if (providerEnabled === false) {
+            const disabledMessage = `${providerName} 登录暂未启用，请先使用邮箱登录。`
+            setError(disabledMessage)
+            return { ok: false, error: disabledMessage }
+        }
 
         const { data, error: authError } = await supabase.auth.signInWithOAuth({
             provider,
