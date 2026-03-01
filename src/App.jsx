@@ -21,17 +21,35 @@ const ProductSections = lazy(() => import('./components/ProductSections'))
 const PricingModal = lazy(() => import('./components/modals/PricingModal'))
 const LoginModal = lazy(() => import('./components/modals/LoginModal'))
 const CreditsHistoryModal = lazy(() => import('./components/modals/CreditsHistoryModal'))
+const ProfileEditModal = lazy(() => import('./components/modals/ProfileEditModal'))
+
+const PENDING_INVITE_STORAGE_KEY = 'ai_reply_pending_invite_code'
+const SIGNUP_NOTICE_STORAGE_KEY_PREFIX = 'ai_reply_signup_notice_seen_'
+
+function sanitizeInviteCode(rawValue) {
+    if (!rawValue) return ''
+    return String(rawValue).trim().replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 32)
+}
+
+function buildDefaultAvatar(userId = 'guest') {
+    return `https://api.dicebear.com/9.x/thumbs/svg?seed=${encodeURIComponent(userId)}`
+}
 
 function App() {
     const [showPricingModal, setShowPricingModal] = useState(false)
     const [showLoginModal, setShowLoginModal] = useState(false)
     const [showCreditsModal, setShowCreditsModal] = useState(false)
+    const [showProfileModal, setShowProfileModal] = useState(false)
     const [checkoutLoadingPlan, setCheckoutLoadingPlan] = useState('')
     const [checkoutError, setCheckoutError] = useState('')
     const [inviteStatus, setInviteStatus] = useState('')
+    const [noticeMessage, setNoticeMessage] = useState('')
     const [deleteAccountLoading, setDeleteAccountLoading] = useState(false)
+    const [profileUpdateLoading, setProfileUpdateLoading] = useState(false)
+    const [profileUpdateError, setProfileUpdateError] = useState('')
 
     const marketingTrackedRef = useRef(false)
+    const inviteAutoAppliedRef = useRef(false)
 
     const auth = useAuth()
     const wallet = useWallet({ enabled: auth.isAuthenticated })
@@ -75,6 +93,97 @@ function App() {
             // Non-blocking marketing event.
         })
     }, [auth.isAuthenticated])
+
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search)
+        const inviteFromQuery = sanitizeInviteCode(params.get('ref') || params.get('invite') || '')
+        if (!inviteFromQuery) {
+            return
+        }
+
+        localStorage.setItem(PENDING_INVITE_STORAGE_KEY, inviteFromQuery)
+        setNoticeMessage(`Invite code detected: ${inviteFromQuery}`)
+
+        params.delete('ref')
+        params.delete('invite')
+        const nextQuery = params.toString()
+        const nextUrl = `${window.location.pathname}${nextQuery ? `?${nextQuery}` : ''}${window.location.hash || ''}`
+        window.history.replaceState({}, '', nextUrl)
+    }, [])
+
+    useEffect(() => {
+        if (!noticeMessage) {
+            return
+        }
+
+        const timer = setTimeout(() => {
+            setNoticeMessage('')
+        }, 4500)
+
+        return () => clearTimeout(timer)
+    }, [noticeMessage])
+
+    useEffect(() => {
+        if (!auth.isAuthenticated || !auth.user?.id || !wallet.wallet || inviteAutoAppliedRef.current) {
+            return
+        }
+
+        const pendingInviteCode = sanitizeInviteCode(localStorage.getItem(PENDING_INVITE_STORAGE_KEY))
+        if (!pendingInviteCode || wallet.inviteRedeemed) {
+            return
+        }
+
+        const ownCode = sanitizeInviteCode(wallet.referralCode || '')
+        if (ownCode && pendingInviteCode.toLowerCase() === ownCode.toLowerCase()) {
+            localStorage.removeItem(PENDING_INVITE_STORAGE_KEY)
+            setNoticeMessage('Self invite is not allowed. Please use another invite code.')
+            return
+        }
+
+        inviteAutoAppliedRef.current = true
+        apiPost('redeem-invite-code', { invite_code: pendingInviteCode })
+            .then(() => {
+                localStorage.removeItem(PENDING_INVITE_STORAGE_KEY)
+                setInviteStatus('Invite code redeemed successfully.')
+                setNoticeMessage(`Invite applied: +200 permanent credits to inviter.`)
+                wallet.refreshWallet()
+            })
+            .catch((error) => {
+                const message = error?.message || 'Failed to redeem invite code.'
+                setInviteStatus(message)
+                setNoticeMessage(message)
+                if (
+                    message.toLowerCase().includes('already') ||
+                    message.toLowerCase().includes('not found') ||
+                    message.toLowerCase().includes('self')
+                ) {
+                    localStorage.removeItem(PENDING_INVITE_STORAGE_KEY)
+                }
+            })
+            .finally(() => {
+                inviteAutoAppliedRef.current = false
+            })
+    }, [auth.isAuthenticated, auth.user?.id, wallet, wallet.wallet, wallet.inviteRedeemed, wallet.referralCode])
+
+    useEffect(() => {
+        if (!auth.isAuthenticated || !auth.user?.id || !wallet.wallet) {
+            return
+        }
+
+        const seenKey = `${SIGNUP_NOTICE_STORAGE_KEY_PREFIX}${auth.user.id}`
+        const alreadySeen = localStorage.getItem(seenKey)
+        if (alreadySeen) {
+            return
+        }
+
+        const joinedAt = auth.user.created_at ? new Date(auth.user.created_at).getTime() : 0
+        const joinedRecently = joinedAt > 0 && Date.now() - joinedAt < 1000 * 60 * 60 * 24
+        const gotInitialBonus = (wallet.permanentCredits ?? 0) >= 500
+        if (joinedRecently && gotInitialBonus) {
+            localStorage.setItem(seenKey, '1')
+            setNoticeMessage('Welcome! 500 free permanent credits have been added.')
+        }
+    }, [auth.isAuthenticated, auth.user?.created_at, auth.user?.id, wallet.permanentCredits, wallet.wallet])
 
     const handleGenerate = useCallback(async (config) => {
         if (!auth.isAuthenticated) {
@@ -140,10 +249,12 @@ function App() {
             })
 
             setInviteStatus('Invite code redeemed successfully.')
+            setNoticeMessage('Invite code redeemed successfully.')
             wallet.refreshWallet()
             return { ok: true, message: 'Invite code redeemed successfully.' }
         } catch (error) {
             setInviteStatus(error.message)
+            setNoticeMessage(error.message)
             return { ok: false, message: error.message }
         }
     }, [auth.isAuthenticated, wallet, setShowLoginModal])
@@ -168,8 +279,41 @@ function App() {
         }
     }, [auth, deleteAccountLoading])
 
-    const displayName = auth.profile?.display_name || auth.user?.user_metadata?.full_name || auth.user?.email || 'User'
-    const avatarUrl = auth.profile?.avatar_url || auth.user?.user_metadata?.avatar_url || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face'
+    const handleProfileSave = useCallback(async ({ displayName, avatarUrl }) => {
+        setProfileUpdateError('')
+        setProfileUpdateLoading(true)
+
+        try {
+            const result = await auth.updateProfile({
+                displayName,
+                avatarUrl,
+            })
+
+            if (!result?.ok) {
+                setProfileUpdateError(result?.error || 'Failed to update profile.')
+                return
+            }
+
+            setShowProfileModal(false)
+            setNoticeMessage('Profile updated successfully.')
+        } catch (error) {
+            setProfileUpdateError(error.message || 'Failed to update profile.')
+        } finally {
+            setProfileUpdateLoading(false)
+        }
+    }, [auth])
+
+    const displayName = auth.profile?.display_name
+        || auth.user?.user_metadata?.full_name
+        || auth.user?.user_metadata?.name
+        || auth.user?.user_metadata?.preferred_username
+        || auth.user?.user_metadata?.user_name
+        || auth.user?.email
+        || 'User'
+    const avatarUrl = auth.profile?.avatar_url
+        || auth.user?.user_metadata?.avatar_url
+        || auth.user?.user_metadata?.picture
+        || buildDefaultAvatar(auth.user?.id)
 
     const user = useMemo(() => {
         if (!auth.user) {
@@ -184,6 +328,7 @@ function App() {
             name: displayName,
             avatar: avatarUrl,
             id: auth.user.id,
+            email: auth.user.email || '',
             membership: {
                 tier: wallet.wallet?.tier || 'free',
                 expires: expiresAt,
@@ -223,6 +368,10 @@ function App() {
                         onDeleteAccount={handleDeleteAccount}
                         onCreditsClick={() => setShowCreditsModal(true)}
                         onRedeemInvite={handleRedeemInvite}
+                        onEditProfile={() => {
+                            setProfileUpdateError('')
+                            setShowProfileModal(true)
+                        }}
                     />
 
                     <SimpleBackground />
@@ -238,6 +387,12 @@ function App() {
                             {!!globalError && (
                                 <div role="alert" className="mb-6 rounded-xl border border-red-200 bg-red-50 text-red-700 px-4 py-3 text-sm">
                                     {globalError}
+                                </div>
+                            )}
+
+                            {!!noticeMessage && (
+                                <div className="mb-6 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-700 px-4 py-3 text-sm">
+                                    {noticeMessage}
                                 </div>
                             )}
 
@@ -326,6 +481,7 @@ function App() {
                                     onClose={() => setShowLoginModal(false)}
                                     onOAuthLogin={auth.signInWithOAuth}
                                     onEmailLogin={auth.signInWithEmail}
+                                    onEmailOtpVerify={auth.verifyEmailOtp}
                                     errorMessage={auth.error}
                                     oauthProviders={auth.oauthProviders}
                                 />
@@ -336,6 +492,23 @@ function App() {
                                     onClose={() => setShowCreditsModal(false)}
                                     transactions={transactions}
                                     isLoading={ledgerLoading}
+                                />
+                            )}
+                            {showProfileModal && (
+                                <ProfileEditModal
+                                    isOpen={showProfileModal}
+                                    onClose={() => {
+                                        setShowProfileModal(false)
+                                        setProfileUpdateError('')
+                                    }}
+                                    onSave={handleProfileSave}
+                                    loading={profileUpdateLoading}
+                                    errorMessage={profileUpdateError}
+                                    userId={auth.user?.id || ''}
+                                    email={auth.user?.email || ''}
+                                    initialDisplayName={auth.profile?.display_name || ''}
+                                    initialAvatarUrl={auth.profile?.avatar_url || ''}
+                                    defaultAvatarUrl={buildDefaultAvatar(auth.user?.id)}
                                 />
                             )}
                         </Suspense>

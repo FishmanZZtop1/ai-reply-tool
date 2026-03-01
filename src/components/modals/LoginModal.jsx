@@ -11,11 +11,14 @@ const LoginModal = memo(function LoginModal({
     onClose,
     onOAuthLogin,
     onEmailLogin,
+    onEmailOtpVerify,
     errorMessage,
     oauthProviders,
 }) {
     const [email, setEmail] = useState('')
+    const [otpCode, setOtpCode] = useState('')
     const [emailStatus, setEmailStatus] = useState('idle')
+    const [otpLoading, setOtpLoading] = useState(false)
     const [localError, setLocalError] = useState('')
 
     const socialButtons = [
@@ -40,6 +43,15 @@ const LoginModal = memo(function LoginModal({
                 </svg>
             ),
         },
+        {
+            name: 'X',
+            key: 'twitter',
+            icon: (
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 1200 1227">
+                    <path d="M714.163 519.284L1160.89 0H1055.47L667.137 451.86L357.328 0H0L468.492 682.446L0 1226.37H105.42L515.239 750.444L842.672 1226.37H1200L714.137 519.284H714.163ZM568.685 688.44L521.291 620.466L144.011 79.6944H306.615L611.135 516.227L658.529 584.201L1055.52 1152.45H892.918L568.685 688.466V688.44Z" />
+                </svg>
+            ),
+        },
     ]
 
     const handleSendMagicLink = async (event) => {
@@ -57,11 +69,46 @@ const LoginModal = memo(function LoginModal({
         const result = await onEmailLogin?.(trimmedEmail)
         if (result?.ok) {
             setEmailStatus('sent')
+            setOtpCode('')
             return
         }
 
         setEmailStatus('idle')
         setLocalError(result?.error || 'Failed to send sign-in email.')
+    }
+
+    const handleVerifyOtp = async (event) => {
+        event.preventDefault()
+
+        const trimmedEmail = email.trim().toLowerCase()
+        const normalizedOtp = otpCode.trim()
+
+        if (!trimmedEmail) {
+            setLocalError('Please enter your email address first.')
+            return
+        }
+
+        if (!normalizedOtp) {
+            setLocalError('Please enter the email code.')
+            return
+        }
+
+        setLocalError('')
+        setOtpLoading(true)
+
+        const result = await onEmailOtpVerify?.({
+            email: trimmedEmail,
+            token: normalizedOtp,
+        })
+
+        if (result?.ok) {
+            setEmailStatus('verified')
+            setOtpLoading(false)
+            return
+        }
+
+        setOtpLoading(false)
+        setLocalError(result?.error || 'Failed to verify email code.')
     }
 
     return (
@@ -176,7 +223,7 @@ const LoginModal = memo(function LoginModal({
 
                         <div className="my-5 flex items-center gap-3 text-xs text-gray-400">
                             <div className="h-px bg-gray-200 flex-1" />
-                            <span>or email magic link</span>
+                            <span>or email login</span>
                             <div className="h-px bg-gray-200 flex-1" />
                         </div>
 
@@ -194,9 +241,29 @@ const LoginModal = memo(function LoginModal({
                                 disabled={emailStatus === 'loading'}
                                 className="w-full h-11 rounded-xl bg-gray-900 text-white text-sm font-semibold disabled:opacity-60"
                             >
-                                {emailStatus === 'loading' ? 'Sending...' : emailStatus === 'sent' ? 'Magic Link Sent' : 'Send Magic Link'}
+                                {emailStatus === 'loading' ? 'Sending...' : emailStatus === 'sent' ? 'Email Sent' : 'Send Login Email'}
                             </button>
                         </form>
+
+                        {emailStatus === 'sent' && (
+                            <form className="mt-3 space-y-2" onSubmit={handleVerifyOtp}>
+                                <input
+                                    type="text"
+                                    inputMode="numeric"
+                                    value={otpCode}
+                                    onChange={(event) => setOtpCode(event.target.value.replace(/\D/g, '').slice(0, 8))}
+                                    placeholder="Enter 6-8 digit email code"
+                                    className="w-full h-11 rounded-xl border border-gray-200 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-pink-200"
+                                />
+                                <button
+                                    type="submit"
+                                    disabled={otpLoading || otpCode.length < 6}
+                                    className="w-full h-10 rounded-xl bg-gradient-to-r from-[#E413A2] to-[#FF789A] text-white text-sm font-semibold disabled:opacity-60"
+                                >
+                                    {otpLoading ? 'Verifying...' : 'Verify Code in This Window'}
+                                </button>
+                            </form>
+                        )}
 
                         {(localError || errorMessage) && (
                             <div role="alert" className="mt-4 rounded-lg border border-red-200 bg-red-50 text-red-700 text-xs px-3 py-2">
@@ -206,7 +273,13 @@ const LoginModal = memo(function LoginModal({
 
                         {emailStatus === 'sent' && (
                             <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-700 text-xs px-3 py-2">
-                                Check your inbox for the sign-in link.
+                                We sent a login email. If the link opens another browser, use the email code above to complete sign-in here.
+                            </div>
+                        )}
+
+                        {emailStatus === 'verified' && (
+                            <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-700 text-xs px-3 py-2">
+                                Email verified. Logging you in...
                             </div>
                         )}
 

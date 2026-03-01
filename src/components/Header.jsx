@@ -5,7 +5,7 @@
 import { memo, useRef, useState, useEffect } from 'react'
 import { motion, AnimatePresence, useMotionValue, useSpring } from 'framer-motion'
 import { springs } from '../motion/config'
-import { Coins, Ticket, Link2, LogOut, ChevronDown, UserX } from 'lucide-react'
+import { Coins, Ticket, Link2, LogOut, ChevronDown, UserX, UserPen } from 'lucide-react'
 
 function MagneticNavButton({ children, onClick }) {
     const ref = useRef(null)
@@ -58,6 +58,7 @@ function UserDropdown({
     onPricingClick,
     onCreditsClick,
     onRedeemInvite,
+    onEditProfile,
 }) {
     const [isOpen, setIsOpen] = useState(false)
     const [couponExpanded, setCouponExpanded] = useState(false)
@@ -125,6 +126,11 @@ function UserDropdown({
     const handleCreditsClick = () => {
         setIsOpen(false)
         onCreditsClick()
+    }
+
+    const handleEditProfile = () => {
+        setIsOpen(false)
+        onEditProfile?.()
     }
 
     const handleRedeemInvite = async () => {
@@ -233,6 +239,7 @@ function UserDropdown({
                                 />
                                 <div className="flex-1 min-w-0">
                                     <div className="font-semibold text-gray-900 truncate mb-1">{user.name}</div>
+                                    <div className="text-[11px] text-gray-500 truncate mb-1">{user.email || user.id}</div>
                                     <div className="flex items-center justify-between">
                                         <span className={`text-[10px] font-bold ${isFree ? '' : 'px-2 py-0.5 rounded'} ${memberStyle.badge}`}>
                                             {memberStyle.label}
@@ -388,6 +395,15 @@ function UserDropdown({
                             <div className="my-2 border-t border-gray-100" />
 
                             <motion.button
+                                onClick={handleEditProfile}
+                                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-indigo-50 text-left"
+                                whileHover={{ x: 4 }}
+                            >
+                                <UserPen className="w-[18px] h-[18px] text-indigo-500" strokeWidth={1.5} />
+                                <span className="text-sm font-medium text-indigo-600">Edit Profile</span>
+                            </motion.button>
+
+                            <motion.button
                                 onClick={() => {
                                     setIsOpen(false)
                                     onLogout()
@@ -433,6 +449,7 @@ const Header = memo(function Header({
     onDeleteAccount,
     onCreditsClick,
     onRedeemInvite,
+    onEditProfile,
 }) {
     const scrollToFeatures = () => {
         const element = document.getElementById('features-section')
@@ -480,20 +497,44 @@ const Header = memo(function Header({
 
             <div className="flex items-center gap-4">
                 {isLoggedIn && user ? (
-                    <UserDropdown
-                        user={user}
-                        creditSummary={creditSummary}
-                        coupons={coupons}
-                        inviteCode={inviteCode}
-                        inviteLink={inviteLink}
-                        inviteRedeemed={inviteRedeemed}
-                        inviteStatus={inviteStatus}
-                        onLogout={onLogout}
-                        onDeleteAccount={onDeleteAccount}
-                        onPricingClick={onPricingClick}
-                        onCreditsClick={onCreditsClick}
-                        onRedeemInvite={onRedeemInvite}
-                    />
+                    <>
+                        <div className="hidden md:flex items-center gap-2 rounded-full border border-amber-100 bg-gradient-to-r from-amber-50 to-orange-50 px-2 py-1">
+                            <button
+                                onClick={onCreditsClick}
+                                className="flex items-center gap-2 rounded-full px-3 py-1 text-left hover:bg-white/70 transition-colors"
+                            >
+                                <Coins className="w-4 h-4 text-amber-600" strokeWidth={1.8} />
+                                <div className="leading-tight">
+                                    <div className="text-[11px] text-amber-700">
+                                        T:{creditSummary?.timedCredits ?? 0} | P:{creditSummary?.permanentCredits ?? 0}
+                                    </div>
+                                    <div className="text-xs font-bold text-amber-800">Total {creditSummary?.totalCredits ?? 0}</div>
+                                </div>
+                            </button>
+                            <button
+                                onClick={onPricingClick}
+                                className="h-8 px-3 rounded-full bg-gray-900 text-white text-xs font-semibold hover:bg-gray-800 transition-colors"
+                            >
+                                Renew
+                            </button>
+                        </div>
+
+                        <UserDropdown
+                            user={user}
+                            creditSummary={creditSummary}
+                            coupons={coupons}
+                            inviteCode={inviteCode}
+                            inviteLink={inviteLink}
+                            inviteRedeemed={inviteRedeemed}
+                            inviteStatus={inviteStatus}
+                            onLogout={onLogout}
+                            onDeleteAccount={onDeleteAccount}
+                            onPricingClick={onPricingClick}
+                            onCreditsClick={onCreditsClick}
+                            onRedeemInvite={onRedeemInvite}
+                            onEditProfile={onEditProfile}
+                        />
+                    </>
                 ) : (
                     <motion.button
                         onClick={onLoginClick}

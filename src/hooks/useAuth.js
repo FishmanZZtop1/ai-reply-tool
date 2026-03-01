@@ -7,6 +7,8 @@ function mapProvider(provider) {
             return 'google'
         case 'GitHub':
             return 'github'
+        case 'X':
+            return 'twitter'
         default:
             return null
     }
@@ -57,6 +59,7 @@ export function useAuth() {
     const [oauthProviders, setOauthProviders] = useState({
         google: null,
         github: null,
+        twitter: null,
     })
 
     const user = session?.user ?? null
@@ -133,12 +136,14 @@ export function useAuth() {
         async function bootstrapOauthProviders() {
             const settingsGoogle = await isOAuthProviderEnabled('google')
             const settingsGithub = await isOAuthProviderEnabled('github')
+            const settingsTwitter = await isOAuthProviderEnabled('twitter')
             if (!mounted) {
                 return
             }
             setOauthProviders({
                 google: settingsGoogle === true,
                 github: settingsGithub === true,
+                twitter: settingsTwitter === true,
             })
         }
 
@@ -203,7 +208,7 @@ export function useAuth() {
 
         window.location.assign(data.url)
         return { ok: true }
-    }, [])
+    }, [oauthProviders])
 
     const signInWithEmail = useCallback(async (email) => {
         if (!supabase) {
@@ -226,8 +231,72 @@ export function useAuth() {
             return { ok: false, error: mappedError }
         }
 
+        return { ok: true, sentTo: email }
+    }, [])
+
+    const verifyEmailOtp = useCallback(async ({ email, token }) => {
+        if (!supabase) {
+            setError('Supabase is not configured.')
+            return { ok: false, error: 'Supabase is not configured.' }
+        }
+
+        if (!email || !token) {
+            const validationError = '请输入邮箱和验证码。'
+            setError(validationError)
+            return { ok: false, error: validationError }
+        }
+
+        setError('')
+
+        const { error: verifyError } = await supabase.auth.verifyOtp({
+            email: email.trim().toLowerCase(),
+            token: token.trim(),
+            type: 'email',
+        })
+
+        if (verifyError) {
+            const mappedError = mapAuthErrorMessage(verifyError.message)
+            setError(mappedError)
+            return { ok: false, error: mappedError }
+        }
+
         return { ok: true }
     }, [])
+
+    const updateProfile = useCallback(async ({ displayName, avatarUrl }) => {
+        if (!supabase || !user?.id) {
+            const profileError = 'Not authenticated.'
+            setError(profileError)
+            return { ok: false, error: profileError }
+        }
+
+        setError('')
+
+        const nextDisplayName = String(displayName || '').trim().slice(0, 60)
+        const nextAvatarUrl = String(avatarUrl || '').trim().slice(0, 300)
+
+        const { data, error: upsertError } = await supabase
+            .from('profiles')
+            .upsert({
+                id: user.id,
+                display_name: nextDisplayName || null,
+                avatar_url: nextAvatarUrl || null,
+            }, { onConflict: 'id' })
+            .select('id, display_name, avatar_url, referral_code, created_at')
+            .maybeSingle()
+
+        if (upsertError) {
+            const mappedError = mapAuthErrorMessage(upsertError.message)
+            setError(mappedError)
+            return { ok: false, error: mappedError }
+        }
+
+        if (data) {
+            setProfile(data)
+        }
+
+        return { ok: true, profile: data ?? null }
+    }, [user?.id])
 
     const signOut = useCallback(async () => {
         if (!supabase) {
@@ -251,6 +320,8 @@ export function useAuth() {
         isAuthenticated,
         signInWithOAuth,
         signInWithEmail,
+        verifyEmailOtp,
+        updateProfile,
         signOut,
-    }), [error, isAuthenticated, loading, oauthProviders, profile, session, signInWithEmail, signInWithOAuth, signOut, user])
+    }), [error, isAuthenticated, loading, oauthProviders, profile, session, signInWithEmail, signInWithOAuth, signOut, updateProfile, user, verifyEmailOtp])
 }
