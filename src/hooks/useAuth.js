@@ -8,7 +8,7 @@ function mapProvider(provider) {
         case 'GitHub':
             return 'github'
         case 'X':
-            return 'twitter'
+            return 'x'
         default:
             return null
     }
@@ -45,7 +45,11 @@ async function isOAuthProviderEnabled(provider) {
         }
 
         const settings = await response.json()
-        return Boolean(settings?.external?.[provider])
+        const external = settings?.external || {}
+        if (provider === 'x') {
+            return Boolean(external.x ?? external.twitter)
+        }
+        return Boolean(external?.[provider])
     } catch {
         return null
     }
@@ -59,7 +63,7 @@ export function useAuth() {
     const [oauthProviders, setOauthProviders] = useState({
         google: null,
         github: null,
-        twitter: null,
+        x: null,
     })
 
     const user = session?.user ?? null
@@ -136,14 +140,14 @@ export function useAuth() {
         async function bootstrapOauthProviders() {
             const settingsGoogle = await isOAuthProviderEnabled('google')
             const settingsGithub = await isOAuthProviderEnabled('github')
-            const settingsTwitter = await isOAuthProviderEnabled('twitter')
+            const settingsX = await isOAuthProviderEnabled('x')
             if (!mounted) {
                 return
             }
             setOauthProviders({
                 google: settingsGoogle === true,
                 github: settingsGithub === true,
-                twitter: settingsTwitter === true,
+                x: settingsX === true,
             })
         }
 
