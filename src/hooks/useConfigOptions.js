@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { apiGet } from '../lib/apiClient'
 
 const requiredScenes = ['👋 Opening Line']
-const requiredStyles = ['🎧 Customer']
 
 const fallbackOptions = {
     scenes: [
@@ -15,7 +14,7 @@ const fallbackOptions = {
         '🎯 Job Interview',
     ],
     roles: ['👔 Boss / Manager', '🤝 Colleague', '😊 Friend', '👨‍👩‍👧 Family', '❤️ Partner', '💼 Client', '👤 Stranger'],
-    styles: ['📋 Professional', '🤗 Friendly', '😂 Humorous', '⚡ Direct', '🌸 Subtle', '🎉 Enthusiastic', '🎧 Customer'],
+    styles: ['📋 Professional', '🤗 Friendly', '😂 Humorous', '⚡ Direct', '🌸 Subtle', '🎉 Enthusiastic'],
 }
 
 function ensureRequiredOptions(list, required) {
@@ -50,11 +49,12 @@ export function useConfigOptions() {
                 sceneList.splice(openingLineIndex, 1)
                 sceneList.unshift('👋 Opening Line')
             }
+            const styleList = styles.filter((item) => !/customer/i.test(String(item || '')))
 
             setCatalog({
                 scenes: sceneList,
                 roles,
-                styles: ensureRequiredOptions(styles, requiredStyles),
+                styles: styleList.length ? styleList : fallbackOptions.styles,
             })
         } catch {
             setCatalog(fallbackOptions)

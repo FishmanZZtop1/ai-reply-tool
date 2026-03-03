@@ -124,7 +124,9 @@ export function useGenerator({ onSuccess }) {
             options: {
                 scene: config.scene,
                 role: config.role,
-                style: config.style,
+                style: config.style === 'custom'
+                    ? String(config.styleCustom || '').trim() || 'Customer'
+                    : config.style,
                 length: config.length,
                 emoji: config.emoji,
                 sceneCustom: config.sceneCustom,

@@ -505,10 +505,6 @@ const Header = memo(function Header({
                             >
                                 <Coins className="w-4 h-4 text-amber-600" strokeWidth={1.8} />
                                 <div className="flex items-center gap-2 text-[11px] text-amber-800 whitespace-nowrap">
-                                    <span className="font-semibold">Timed Credits {creditSummary?.timedCredits ?? 0}</span>
-                                    <span className="text-amber-400">|</span>
-                                    <span className="font-semibold">Permanent Credits {creditSummary?.permanentCredits ?? 0}</span>
-                                    <span className="text-amber-400">|</span>
                                     <span className="font-bold">Total Credits {creditSummary?.totalCredits ?? 0}</span>
                                 </div>
                             </button>

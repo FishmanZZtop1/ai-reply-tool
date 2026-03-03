@@ -8,7 +8,7 @@ import { springs } from '../motion/config'
 
 const SCENE_OPTIONS = ['👋 Opening Line', '💼 Work Email', '💬 Social Chat', '🏠 Family', '🎧 Customer Service', '💕 Dating', '🎯 Job Interview']
 const ROLE_OPTIONS = ['👔 Boss / Manager', '🤝 Colleague', '😊 Friend', '👨‍👩‍👧 Family', '❤️ Partner', '💼 Client', '👤 Stranger']
-const STYLE_OPTIONS = ['📋 Professional', '🤗 Friendly', '😂 Humorous', '⚡ Direct', '🌸 Subtle', '🎉 Enthusiastic', '🎧 Customer']
+const STYLE_OPTIONS = ['📋 Professional', '🤗 Friendly', '😂 Humorous', '⚡ Direct', '🌸 Subtle', '🎉 Enthusiastic']
 
 // Animated Chip Button
 function Chip({ label, isSelected, onClick }) {
@@ -41,6 +41,8 @@ function Chip({ label, isSelected, onClick }) {
 
 const ChipGroup = memo(function ChipGroup({ options, selected, onSelect, allowCustom = false, customValue, onCustomChange }) {
     const [showCustomInput, setShowCustomInput] = useState(false)
+    const customText = String(customValue || '').trim()
+    const hasCustomChip = allowCustom && customText.length > 0
 
     const handleCustomClick = () => {
         setShowCustomInput(true)
@@ -66,11 +68,25 @@ const ChipGroup = memo(function ChipGroup({ options, selected, onSelect, allowCu
             ))}
             {allowCustom && (
                 <>
+                    {hasCustomChip && (
+                        <Chip
+                            label={`✨ ${customText}`}
+                            isSelected={selected === 'custom'}
+                            onClick={() => {
+                                setShowCustomInput(false)
+                                if (selected === 'custom') {
+                                    onSelect('')
+                                    return
+                                }
+                                onSelect('custom')
+                            }}
+                        />
+                    )}
                     <Chip
                         label="+ Custom"
-                        isSelected={selected === 'custom'}
+                        isSelected={selected === 'custom' && !hasCustomChip}
                         onClick={() => {
-                            if (selected === 'custom') {
+                            if (!hasCustomChip && selected === 'custom' && !showCustomInput) {
                                 setShowCustomInput(false)
                                 onSelect('')
                                 onCustomChange?.('')
@@ -84,10 +100,29 @@ const ChipGroup = memo(function ChipGroup({ options, selected, onSelect, allowCu
                             <motion.input
                                 type="text"
                                 value={customValue || ''}
-                                onChange={(e) => onCustomChange?.(e.target.value)}
+                                onChange={(e) => {
+                                    const nextValue = e.target.value
+                                    onCustomChange?.(nextValue)
+                                    if (nextValue.trim()) {
+                                        onSelect('custom')
+                                    } else if (selected === 'custom') {
+                                        onSelect('')
+                                    }
+                                }}
                                 placeholder="Enter custom..."
                                 className="px-4 py-2.5 text-sm rounded-full border border-pink-200 bg-white focus:outline-none focus:ring-2 focus:ring-pink-400 min-w-[140px]"
                                 autoFocus
+                                onBlur={() => setShowCustomInput(false)}
+                                onKeyDown={(event) => {
+                                    if (event.key === 'Enter') {
+                                        event.preventDefault()
+                                        setShowCustomInput(false)
+                                    }
+                                    if (event.key === 'Escape') {
+                                        event.preventDefault()
+                                        setShowCustomInput(false)
+                                    }
+                                }}
                                 initial={{ opacity: 0, scale: 0.8, width: 0 }}
                                 animate={{ opacity: 1, scale: 1, width: 'auto' }}
                                 exit={{ opacity: 0, scale: 0.8, width: 0 }}
@@ -162,7 +197,11 @@ const ConfigPanel = memo(function ConfigPanel({
     }, [config, onConfigChange])
 
     const handleSceneCustomChange = useCallback((value) => {
-        onConfigChange({ ...config, sceneCustom: value })
+        onConfigChange({
+            ...config,
+            sceneCustom: value,
+            scene: value.trim() ? 'custom' : (config.scene === 'custom' ? '' : config.scene),
+        })
     }, [config, onConfigChange])
 
     const handleRoleChange = useCallback((value) => {
@@ -170,11 +209,23 @@ const ConfigPanel = memo(function ConfigPanel({
     }, [config, onConfigChange])
 
     const handleRoleCustomChange = useCallback((value) => {
-        onConfigChange({ ...config, roleCustom: value })
+        onConfigChange({
+            ...config,
+            roleCustom: value,
+            role: value.trim() ? 'custom' : (config.role === 'custom' ? '' : config.role),
+        })
     }, [config, onConfigChange])
 
     const handleStyleChange = useCallback((value) => {
         onConfigChange({ ...config, style: value })
+    }, [config, onConfigChange])
+
+    const handleStyleCustomChange = useCallback((value) => {
+        onConfigChange({
+            ...config,
+            styleCustom: value,
+            style: value.trim() ? 'custom' : (config.style === 'custom' ? '' : config.style),
+        })
     }, [config, onConfigChange])
 
     const handleLengthChange = useCallback((value) => {
@@ -235,6 +286,9 @@ const ConfigPanel = memo(function ConfigPanel({
                     options={styleOptions}
                     selected={config.style}
                     onSelect={handleStyleChange}
+                    allowCustom={true}
+                    customValue={config.styleCustom}
+                    onCustomChange={handleStyleCustomChange}
                 />
             </div>
 

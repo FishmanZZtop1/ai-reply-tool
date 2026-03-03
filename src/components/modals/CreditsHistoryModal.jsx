@@ -8,7 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { modalBackdrop, modalContent, springs } from '../../motion/config'
 import { X, ArrowUpRight, ArrowDownLeft, Calendar } from 'lucide-react'
 
-const CreditsHistoryModal = memo(function CreditsHistoryModal({ isOpen, onClose, transactions = [], isLoading }) {
+const CreditsHistoryModal = memo(function CreditsHistoryModal({ isOpen, onClose, transactions = [], isLoading, creditSummary }) {
     const items = transactions.map((item) => ({
         id: item.id,
         type: item.amount >= 0 ? 'recharge' : 'consume',
@@ -17,6 +17,9 @@ const CreditsHistoryModal = memo(function CreditsHistoryModal({ isOpen, onClose,
         date: new Date(item.created_at).toLocaleDateString(),
         time: new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     }))
+    const totalCredits = creditSummary?.totalCredits ?? 0
+    const permanentCredits = creditSummary?.permanentCredits ?? 0
+    const timedCredits = creditSummary?.timedCredits ?? 0
 
     return (
         <AnimatePresence>
@@ -51,6 +54,23 @@ const CreditsHistoryModal = memo(function CreditsHistoryModal({ isOpen, onClose,
                             <div>
                                 <h2 className="text-xl font-bold text-gray-900">Credits History</h2>
                                 <p className="text-sm text-gray-500 mt-1">Track your usage and recharges</p>
+                                <div className="mt-4 grid grid-cols-3 gap-4">
+                                    <div className="text-center">
+                                        <div className="text-[11px] uppercase tracking-wide text-gray-400">Total Credits</div>
+                                        <div className="text-lg font-bold text-gray-900 mt-1">{totalCredits}</div>
+                                    </div>
+                                    <div className="text-center">
+                                        <div className="text-[11px] uppercase tracking-wide text-gray-400">Permanent Credits</div>
+                                        <div className="text-lg font-bold text-gray-900 mt-1">{permanentCredits}</div>
+                                    </div>
+                                    <div className="text-center">
+                                        <div className="text-[11px] uppercase tracking-wide text-gray-400">Timed Credits</div>
+                                        <div className="text-lg font-bold text-gray-900 mt-1">{timedCredits}</div>
+                                    </div>
+                                </div>
+                                <div className="mt-2 text-[11px] text-gray-400 italic">
+                                    The system will automatically use timed credits first.
+                                </div>
                             </div>
                             <motion.button
                                 onClick={onClose}

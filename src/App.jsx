@@ -494,6 +494,11 @@ function App() {
                                     onClose={() => setShowCreditsModal(false)}
                                     transactions={transactions}
                                     isLoading={ledgerLoading}
+                                    creditSummary={{
+                                        totalCredits,
+                                        permanentCredits,
+                                        timedCredits,
+                                    }}
                                 />
                             )}
                             {showProfileModal && (
