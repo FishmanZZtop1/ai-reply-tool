@@ -159,6 +159,8 @@ function buildPrompt(input: ReturnType<typeof normalizeInput>, effectiveLanguage
   return [
     'You are an assistant specialized in writing practical message replies.',
     'You must follow every provided option exactly and never ignore options.',
+    'You write the final message that will be sent from the writer/user to the recipient (the sender of Original Message).',
+    'Never respond to the writer as an assistant. Do not output helper/meta wording.',
     `Return exactly ${input.variations} replies and ensure each reply is meaningfully different.`,
     'Return strict JSON only: {"replies": ["..."]}. Never output markdown or extra keys.',
     '',
@@ -166,17 +168,54 @@ function buildPrompt(input: ReturnType<typeof normalizeInput>, effectiveLanguage
     '',
     `Original Message:\n${input.message}`,
     '',
-    `Additional Notes:\n${input.notes || 'None'}`,
+    `Writer Intent Notes (internal guidance, not to be answered literally):\n${input.notes || 'None'}`,
     '',
     'Output requirements:',
     `- Output language MUST be ${mapLanguageLabel(effectiveLanguage)}.`,
     '- Do not mix multiple languages unless the original message intentionally mixes them.',
+    '- The reply text must directly address the recipient of Original Message.',
+    '- Additional Notes describe intent/style constraints. Convert them into recipient-facing reply content.',
+    '- Never output assistant/meta phrases such as "I can help you..." / "I will help you..." / "我会帮你...".',
     '- Keep tone and role alignment precise.',
     '- Respect length preference (Shorter/Longer).',
     '- If emoji=false, do not include emoji.',
     '- If emoji=true, use emojis only when natural and minimal.',
     '- Return plain reply text only; do not add numbering or bullet prefixes.',
     '- Avoid policy or safety commentary unless explicitly requested by user input.',
+  ].join('\n')
+}
+
+function isAssistantMetaReply(reply: string) {
+  if (!reply) return false
+
+  const englishPatterns = [
+    /\b(as an ai|as your ai|ai assistant)\b/i,
+    /\bi\s*(can|will|'ll)\s*help you\s*(reply|draft|write|respond)\b/i,
+    /\blet me help you\s*(reply|draft|write|respond)\b/i,
+  ]
+
+  const chinesePatterns = [
+    /作为.?ai/i,
+    /我(会|可以|能)(帮|替)你(回复|写|请假|处理|生成)/,
+    /我来(帮|替)你(回复|写|请假|处理|生成)/,
+  ]
+
+  return englishPatterns.some((pattern) => pattern.test(reply))
+    || chinesePatterns.some((pattern) => pattern.test(reply))
+}
+
+function hasAssistantMetaReplies(replies: string[]) {
+  return replies.some((reply) => isAssistantMetaReply(reply))
+}
+
+function buildPerspectiveRetryPrompt(input: ReturnType<typeof normalizeInput>, effectiveLanguage: string) {
+  return [
+    buildPrompt(input, effectiveLanguage),
+    '',
+    'CRITICAL RETRY FIX:',
+    '- Your previous output sounded like assistant-to-user guidance.',
+    '- Rewrite all replies as direct messages from writer to recipient.',
+    '- Do not include "I can help you..." / "I will help you..." / "我会帮你..." style wording.',
   ].join('\n')
 }
 
@@ -685,31 +724,59 @@ Deno.serve(async (request) => {
       )
     }
 
-    const replies = extractReplies(rawText, input.variations)
+    let replies = extractReplies(rawText, input.variations)
+
+    if (replies.length && hasAssistantMetaReplies(replies)) {
+      try {
+        const retryResponse = await callGemini({
+          apiKey: geminiApiKey,
+          model: geminiModel,
+          prompt: buildPerspectiveRetryPrompt(input, effectiveLanguage),
+          variations: input.variations,
+        })
+
+        const retryPayload = await retryResponse.json().catch(() => ({}))
+        const retryText = retryPayload?.candidates?.[0]?.content?.parts?.[0]?.text || ''
+
+        if (retryResponse.ok && retryText) {
+          const retriedReplies = extractReplies(retryText, input.variations)
+          if (retriedReplies.length && !hasAssistantMetaReplies(retriedReplies)) {
+            replies = retriedReplies
+          }
+        }
+      } catch {
+        // Keep first-pass replies and validate below.
+      }
+    }
+
+    if (replies.length && hasAssistantMetaReplies(replies)) {
+      replies = []
+    }
+
     if (!replies.length) {
       refundApplied = await refundCredits(admin, user.id, CREDITS_PER_REQUEST, {
         ...metadata,
         reason: 'empty_output',
-        error_code: 'empty_model_output',
-        error_message: 'Model returned empty output.',
+        error_code: 'invalid_reply_perspective',
+        error_message: 'Model output did not meet reply perspective requirements.',
       })
 
       await admin
         .from('generation_events')
         .update({
-          status: 'empty_output',
+          status: 'invalid_perspective',
           latency_ms: Date.now() - startedAt,
         })
         .eq('request_id', requestId)
 
       await patchChargeLedgerMetadata(admin, user.id, requestId, {
         status: 'failed',
-        error_code: 'empty_model_output',
-        error_message: 'Model returned empty output.',
+        error_code: 'invalid_reply_perspective',
+        error_message: 'Model output did not meet reply perspective requirements.',
         refund_applied: refundApplied,
       })
 
-      return errorResponse('Model returned empty output.', 502, 'empty_model_output', {
+      return errorResponse('Model output did not meet reply perspective requirements.', 502, 'invalid_reply_perspective', {
         request_id: requestId,
         idempotency_key: idempotencyKey,
       })

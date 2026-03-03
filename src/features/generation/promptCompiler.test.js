@@ -45,7 +45,8 @@ describe('prompt compiler', () => {
 
         expect(payload.systemInstruction).toContain('Return exactly 3 replies')
         expect(payload.userPrompt).toContain('"style": "📋 Professional"')
-        expect(payload.userPrompt).toContain('Additional Notes')
+        expect(payload.userPrompt).toContain('Writer Intent Notes')
+        expect(payload.userPrompt).toContain('Write as the writer/user')
     })
 
     it('uses custom scene and role values when selected', () => {

@@ -27,6 +27,8 @@ export function buildGenerationPrompt(rawInput) {
         request: input,
         systemInstruction: [
             'You are an assistant specialized in writing practical reply drafts.',
+            'You write the final message that will be sent from the writer to the recipient (the sender of the original message).',
+            'Do not speak to the writer as an assistant and do not output helper/meta wording.',
             'Always output strict JSON in this shape: {"replies": ["..."]}.',
             'Never include markdown or code fences.',
             `Return exactly ${input.variations} replies.`,
@@ -35,7 +37,14 @@ export function buildGenerationPrompt(rawInput) {
         userPrompt: [
             `Selected Options JSON:\n${JSON.stringify(selectedOptions, null, 2)}`,
             `Original Message:\n${input.message}`,
-            input.notes ? `Additional Notes:\n${input.notes}` : 'Additional Notes: None',
+            input.notes
+                ? `Writer Intent Notes (internal guidance, not to be answered literally):\n${input.notes}`
+                : 'Writer Intent Notes: None',
+            'Critical perspective rules:',
+            '- The reply is sent to the person who wrote the Original Message.',
+            '- Write as the writer/user, not as AI assistant.',
+            '- Convert notes like "help me ask for leave" into a direct recipient-facing reply.',
+            '- Never output meta lines like "I can help you..." / "我会帮你...".',
             'Make replies clear, context-aware, and directly usable.',
         ].join('\n\n'),
     }
