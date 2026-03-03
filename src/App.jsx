@@ -25,6 +25,8 @@ const ProfileEditModal = lazy(() => import('./components/modals/ProfileEditModal
 
 const PENDING_INVITE_STORAGE_KEY = 'ai_reply_pending_invite_code'
 const SIGNUP_NOTICE_STORAGE_KEY_PREFIX = 'ai_reply_signup_notice_seen_'
+const PENDING_GENERATION_STORAGE_KEY = 'ai_reply_pending_generation_draft_v1'
+const PENDING_GENERATION_TTL_MS = 1000 * 60 * 60
 
 function sanitizeInviteCode(rawValue) {
     if (!rawValue) return ''
@@ -33,6 +35,91 @@ function sanitizeInviteCode(rawValue) {
 
 function buildDefaultAvatar(userId = 'guest') {
     return `https://api.dicebear.com/9.x/thumbs/svg?seed=${encodeURIComponent(userId)}`
+}
+
+function sanitizePendingGenerationConfig(rawConfig) {
+    if (!rawConfig || typeof rawConfig !== 'object') {
+        return null
+    }
+
+    const sanitizeText = (value, maxLength) => (
+        typeof value === 'string'
+            ? value.slice(0, maxLength)
+            : ''
+    )
+    const sanitizeChoice = (value) => sanitizeText(value, 120)
+    const normalizeLength = rawConfig.length === 'Longer' ? 'Longer' : 'Shorter'
+    const normalizeVariations = ['1', '3', '5'].includes(String(rawConfig.variations))
+        ? String(rawConfig.variations)
+        : '3'
+
+    return {
+        scene: sanitizeChoice(rawConfig.scene),
+        role: sanitizeChoice(rawConfig.role),
+        style: sanitizeChoice(rawConfig.style),
+        styleCustom: sanitizeChoice(rawConfig.styleCustom),
+        length: normalizeLength,
+        variations: normalizeVariations,
+        emoji: Boolean(rawConfig.emoji),
+        message: sanitizeText(rawConfig.message, GENERATION_LIMITS.messageMax),
+        notes: sanitizeText(rawConfig.notes, GENERATION_LIMITS.notesMax),
+        sceneCustom: sanitizeChoice(rawConfig.sceneCustom),
+        roleCustom: sanitizeChoice(rawConfig.roleCustom),
+    }
+}
+
+function savePendingGenerationConfig(config) {
+    if (typeof window === 'undefined' || !window.sessionStorage) {
+        return false
+    }
+
+    const sanitized = sanitizePendingGenerationConfig(config)
+    if (!sanitized) {
+        return false
+    }
+
+    try {
+        window.sessionStorage.setItem(PENDING_GENERATION_STORAGE_KEY, JSON.stringify({
+            saved_at: Date.now(),
+            config: sanitized,
+        }))
+        return true
+    } catch {
+        return false
+    }
+}
+
+function readPendingGenerationConfig() {
+    if (typeof window === 'undefined' || !window.sessionStorage) {
+        return null
+    }
+
+    try {
+        const raw = window.sessionStorage.getItem(PENDING_GENERATION_STORAGE_KEY)
+        if (!raw) {
+            return null
+        }
+
+        const parsed = JSON.parse(raw)
+        const savedAt = Number(parsed?.saved_at || 0)
+        if (!savedAt || Date.now() - savedAt > PENDING_GENERATION_TTL_MS) {
+            window.sessionStorage.removeItem(PENDING_GENERATION_STORAGE_KEY)
+            return null
+        }
+
+        return sanitizePendingGenerationConfig(parsed?.config)
+    } catch {
+        window.sessionStorage.removeItem(PENDING_GENERATION_STORAGE_KEY)
+        return null
+    }
+}
+
+function clearPendingGenerationConfig() {
+    if (typeof window === 'undefined' || !window.sessionStorage) {
+        return
+    }
+
+    window.sessionStorage.removeItem(PENDING_GENERATION_STORAGE_KEY)
 }
 
 function App() {
@@ -50,6 +137,7 @@ function App() {
 
     const marketingTrackedRef = useRef(false)
     const inviteAutoAppliedRef = useRef(false)
+    const pendingAutoGenerateInFlightRef = useRef(false)
 
     const auth = useAuth()
     const wallet = useWallet({ enabled: auth.isAuthenticated })
@@ -64,6 +152,7 @@ function App() {
         inviteRedeemed,
         coupons,
         transactions,
+        walletLoading,
         ledgerLoading,
         error: walletError,
         fetchLedger,
@@ -185,26 +274,76 @@ function App() {
         }
     }, [auth.isAuthenticated, auth.user?.created_at, auth.user?.id, wallet.permanentCredits, wallet.wallet])
 
-    const handleGenerate = useCallback(async (config) => {
+    const executeGenerate = useCallback(async (config, trigger = 'manual') => {
         if (!auth.isAuthenticated) {
-            setShowLoginModal(true)
-            return
+            return { ok: false, reason: 'unauthorized' }
         }
 
         if ((totalCredits ?? 0) < GENERATION_LIMITS.creditsPerRequest) {
             setShowPricingModal(true)
-            return
+            if (trigger === 'resume') {
+                setNoticeMessage('Login successful, but you need more credits to generate this reply.')
+            }
+            return { ok: false, reason: 'insufficient_credits' }
         }
 
         const response = await generator.generateReplies(config)
         if (!response) {
-            return
+            return { ok: false, reason: 'generation_failed' }
+        }
+
+        if (trigger === 'resume') {
+            setNoticeMessage('Login successful. Your saved draft was generated automatically.')
         }
 
         if (response.remaining_credits < GENERATION_LIMITS.creditsPerRequest) {
             setShowPricingModal(true)
         }
+        return { ok: true, reason: '' }
     }, [auth.isAuthenticated, generator, totalCredits])
+
+    const handleGenerate = useCallback(async (config) => {
+        if (!auth.isAuthenticated) {
+            const saved = savePendingGenerationConfig(config)
+            setShowLoginModal(true)
+            setNoticeMessage(saved
+                ? 'Please log in to continue. Your current draft is saved and will generate automatically after login.'
+                : 'Please log in to continue.')
+            return
+        }
+
+        await executeGenerate(config, 'manual')
+    }, [auth.isAuthenticated, executeGenerate])
+
+    useEffect(() => {
+        if (!auth.isAuthenticated) {
+            pendingAutoGenerateInFlightRef.current = false
+            return
+        }
+
+        if (pendingAutoGenerateInFlightRef.current) {
+            return
+        }
+
+        if (walletLoading || !wallet.wallet) {
+            return
+        }
+
+        const pendingConfig = readPendingGenerationConfig()
+        if (!pendingConfig) {
+            return
+        }
+
+        pendingAutoGenerateInFlightRef.current = true
+        ;(async () => {
+            const result = await executeGenerate(pendingConfig, 'resume')
+            if (result.reason !== 'unauthorized') {
+                clearPendingGenerationConfig()
+            }
+        })().finally(() => {
+            pendingAutoGenerateInFlightRef.current = false
+        })
+    }, [auth.isAuthenticated, executeGenerate, wallet.wallet, walletLoading])
 
     const handleCheckout = useCallback(async (planCode) => {
         if (!auth.isAuthenticated) {
