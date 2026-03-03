@@ -14,7 +14,7 @@ const Generator = memo(function Generator({
         scene: '',
         role: '',
         style: '',
-        styleCustom: 'Customer',
+        styleCustom: '',
         length: 'Shorter',
         variations: '3',
         emoji: true,

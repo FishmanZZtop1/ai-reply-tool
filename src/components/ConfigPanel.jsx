@@ -46,7 +46,6 @@ const ChipGroup = memo(function ChipGroup({ options, selected, onSelect, allowCu
 
     const handleCustomClick = () => {
         setShowCustomInput(true)
-        onSelect('custom')
     }
 
     return (
@@ -85,15 +84,7 @@ const ChipGroup = memo(function ChipGroup({ options, selected, onSelect, allowCu
                     <Chip
                         label="+ Custom"
                         isSelected={selected === 'custom' && !hasCustomChip}
-                        onClick={() => {
-                            if (!hasCustomChip && selected === 'custom' && !showCustomInput) {
-                                setShowCustomInput(false)
-                                onSelect('')
-                                onCustomChange?.('')
-                                return
-                            }
-                            handleCustomClick()
-                        }}
+                        onClick={handleCustomClick}
                     />
                     <AnimatePresence>
                         {showCustomInput && (
@@ -103,11 +94,6 @@ const ChipGroup = memo(function ChipGroup({ options, selected, onSelect, allowCu
                                 onChange={(e) => {
                                     const nextValue = e.target.value
                                     onCustomChange?.(nextValue)
-                                    if (nextValue.trim()) {
-                                        onSelect('custom')
-                                    } else if (selected === 'custom') {
-                                        onSelect('')
-                                    }
                                 }}
                                 placeholder="Enter custom..."
                                 className="px-4 py-2.5 text-sm rounded-full border border-pink-200 bg-white focus:outline-none focus:ring-2 focus:ring-pink-400 min-w-[140px]"
