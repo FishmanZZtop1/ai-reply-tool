@@ -8,6 +8,7 @@ const Generator = memo(function Generator({
     isLoading,
     optionCatalog,
     errorMessage,
+    historyEntries,
 }) {
     const [config, setConfig] = useState({
         scene: '',
@@ -63,6 +64,7 @@ const Generator = memo(function Generator({
                         isLoading={isLoading}
                         results={results}
                         errorMessage={errorMessage}
+                        historyEntries={historyEntries}
                     />
                 </div>
             </div>

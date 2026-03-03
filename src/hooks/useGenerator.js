@@ -77,6 +77,7 @@ async function requestGeneration(payload, idempotencyKey) {
 
 export function useGenerator({ onSuccess }) {
     const [results, setResults] = useState([])
+    const [historyEntries, setHistoryEntries] = useState([])
     const [isLoading, setIsLoading] = useState(false)
     const [error, setError] = useState('')
 
@@ -84,6 +85,37 @@ export function useGenerator({ onSuccess }) {
         setResults([])
         setError('')
     }, [])
+
+    const commitGenerationSuccess = useCallback(async (payload, messageTitle) => {
+        const mapped = mapReplies(payload)
+        setResults(mapped)
+
+        const requestId = payload?.request_id || ''
+        const title = String(messageTitle || '').trim() || "Message You're Replying To"
+
+        if (requestId) {
+            setHistoryEntries((previous) => {
+                const alreadyExists = previous.some((entry) => entry.requestId === requestId)
+                if (alreadyExists) {
+                    return previous
+                }
+
+                const nextEntry = {
+                    requestId,
+                    title,
+                    replies: mapped,
+                    createdAt: new Date().toISOString(),
+                }
+                return [nextEntry, ...previous].slice(0, 30)
+            })
+        }
+
+        if (onSuccess) {
+            await onSuccess(payload)
+        }
+
+        return payload
+    }, [onSuccess])
 
     const generateReplies = useCallback(async (config) => {
         const { request, systemInstruction, userPrompt } = buildGenerationPrompt({
@@ -129,12 +161,7 @@ export function useGenerator({ onSuccess }) {
                     if (immediate?.status === 'running') {
                         const polled = await pollGenerationStatus(idempotencyKey)
                         if (polled.status === 'success') {
-                            const mapped = mapReplies(polled.payload)
-                            setResults(mapped)
-                            if (onSuccess) {
-                                await onSuccess(polled.payload)
-                            }
-                            return polled.payload
+                            return commitGenerationSuccess(polled.payload, request.message)
                         }
 
                         if (polled.status === 'failed') {
@@ -164,14 +191,7 @@ export function useGenerator({ onSuccess }) {
                         })
                     }
 
-                    const mapped = mapReplies(immediate)
-                    setResults(mapped)
-
-                    if (onSuccess) {
-                        await onSuccess(immediate)
-                    }
-
-                    return immediate
+                    return commitGenerationSuccess(immediate, request.message)
                 } catch (requestError) {
                     const isTimeout = requestError instanceof ApiError && requestError.code === 'request_timeout'
 
@@ -182,12 +202,7 @@ export function useGenerator({ onSuccess }) {
                     const polled = await pollGenerationStatus(idempotencyKey)
 
                     if (polled.status === 'success') {
-                        const mapped = mapReplies(polled.payload)
-                        setResults(mapped)
-                        if (onSuccess) {
-                            await onSuccess(polled.payload)
-                        }
-                        return polled.payload
+                        return commitGenerationSuccess(polled.payload, request.message)
                     }
 
                     if (polled.status === 'failed' && regenerateAttempt < MAX_REGENERATE_ATTEMPTS) {
@@ -225,13 +240,14 @@ export function useGenerator({ onSuccess }) {
         } finally {
             setIsLoading(false)
         }
-    }, [onSuccess])
+    }, [commitGenerationSuccess])
 
     return useMemo(() => ({
         results,
+        historyEntries,
         isLoading,
         error,
         clearResults,
         generateReplies,
-    }), [clearResults, error, generateReplies, isLoading, results])
+    }), [clearResults, error, generateReplies, historyEntries, isLoading, results])
 }

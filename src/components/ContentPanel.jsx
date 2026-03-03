@@ -4,6 +4,7 @@
 
 import { memo, useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { History, X } from 'lucide-react'
 import { useDebouncedCallback } from '../hooks/useDebounce'
 import { springs } from '../motion/config'
 
@@ -14,9 +15,11 @@ const ContentPanel = memo(function ContentPanel({
     isLoading,
     results,
     errorMessage,
+    historyEntries = [],
 }) {
     const [currentPage, setCurrentPage] = useState(0)
     const [copiedId, setCopiedId] = useState(null)
+    const [showHistoryModal, setShowHistoryModal] = useState(false)
 
     const handleMessageChange = useCallback((e) => {
         onConfigChange({ ...config, message: e.target.value })
@@ -53,6 +56,7 @@ const ContentPanel = memo(function ContentPanel({
     const currentResult = results[currentPage]
 
     const canGenerate = Boolean(config.message?.trim()) && !isLoading
+    const historyTitle = String(config.message || '').trim() || "Message You're Replying To"
 
     return (
         <motion.div
@@ -250,6 +254,92 @@ const ContentPanel = memo(function ContentPanel({
                             </div>
                         )}
                     </motion.div>
+                )}
+            </AnimatePresence>
+
+            <div className="flex justify-end pt-1">
+                <motion.button
+                    onClick={() => setShowHistoryModal(true)}
+                    className="px-5 py-2.5 rounded-full text-sm font-medium bg-gray-100 text-gray-600 flex items-center gap-2"
+                    style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}
+                    whileHover={{ scale: 1.05, y: -2, boxShadow: '0 6px 20px rgba(0,0,0,0.08)' }}
+                    whileTap={{ scale: 0.95 }}
+                    transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+                >
+                    <History className="w-4 h-4" />
+                    History
+                </motion.button>
+            </div>
+
+            <AnimatePresence>
+                {showHistoryModal && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                        <motion.div
+                            className="absolute inset-0 bg-black/30"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => setShowHistoryModal(false)}
+                            style={{ backdropFilter: 'blur(8px)' }}
+                        />
+
+                        <motion.div
+                            className="relative w-full max-w-2xl max-h-[85vh] overflow-hidden rounded-3xl bg-white"
+                            style={{
+                                boxShadow: '0 25px 80px rgba(0,0,0,0.18)',
+                                border: '1px solid rgba(0,0,0,0.06)',
+                            }}
+                            initial={{ opacity: 0, y: 16, scale: 0.98 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            exit={{ opacity: 0, y: 16, scale: 0.98 }}
+                            transition={{ type: 'spring', ...springs.smooth }}
+                        >
+                            <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
+                                <div>
+                                    <h3 className="text-lg font-semibold text-gray-900">History</h3>
+                                    <p className="text-sm text-gray-500 truncate max-w-[540px]">{historyTitle}</p>
+                                </div>
+                                <button
+                                    onClick={() => setShowHistoryModal(false)}
+                                    className="w-9 h-9 rounded-xl text-gray-400 hover:text-gray-600 hover:bg-gray-100 flex items-center justify-center"
+                                    aria-label="Close history modal"
+                                >
+                                    <X className="w-5 h-5" />
+                                </button>
+                            </div>
+
+                            <div className="overflow-y-auto max-h-[68vh] px-6 py-5 space-y-5">
+                                {historyEntries.length === 0 ? (
+                                    <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-6 text-sm text-gray-500">
+                                        No history yet. Generate a reply to see records here.
+                                    </div>
+                                ) : (
+                                    historyEntries.map((entry) => (
+                                        <div key={entry.requestId} className="space-y-3">
+                                            <div className="text-xs font-semibold uppercase tracking-wider text-gray-400 truncate">
+                                                {entry.title || "Message You're Replying To"}
+                                            </div>
+                                            {entry.replies.map((reply) => (
+                                                <div
+                                                    key={reply.id}
+                                                    className="relative p-5 rounded-xl border-l-4 border-pink-500"
+                                                    style={{
+                                                        background: 'rgba(255,255,255,0.8)',
+                                                        backdropFilter: 'blur(12px)',
+                                                        boxShadow: '0 4px 20px rgba(0,0,0,0.06)',
+                                                    }}
+                                                >
+                                                    <p className="text-gray-700 text-sm leading-relaxed whitespace-pre-wrap">
+                                                        {reply.text}
+                                                    </p>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </motion.div>
+                    </div>
                 )}
             </AnimatePresence>
         </motion.div>

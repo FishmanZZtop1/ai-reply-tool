@@ -440,6 +440,7 @@ function App() {
                                     isLoading={generator.isLoading}
                                     optionCatalog={configOptions.catalog}
                                     errorMessage={generator.error}
+                                    historyEntries={generator.historyEntries}
                                 />
                             </motion.div>
 

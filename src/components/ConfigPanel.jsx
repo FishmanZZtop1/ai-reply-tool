@@ -6,9 +6,9 @@ import { memo, useCallback, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { springs } from '../motion/config'
 
-const SCENE_OPTIONS = ['💼 Work Email', '💬 Social Chat', '🏠 Family', '🎧 Customer Service', '💕 Dating', '🎯 Job Interview']
+const SCENE_OPTIONS = ['👋 Opening Line', '💼 Work Email', '💬 Social Chat', '🏠 Family', '🎧 Customer Service', '💕 Dating', '🎯 Job Interview']
 const ROLE_OPTIONS = ['👔 Boss / Manager', '🤝 Colleague', '😊 Friend', '👨‍👩‍👧 Family', '❤️ Partner', '💼 Client', '👤 Stranger']
-const STYLE_OPTIONS = ['📋 Professional', '🤗 Friendly', '😂 Humorous', '⚡ Direct', '🌸 Subtle', '🎉 Enthusiastic']
+const STYLE_OPTIONS = ['📋 Professional', '🤗 Friendly', '😂 Humorous', '⚡ Direct', '🌸 Subtle', '🎉 Enthusiastic', '🎧 Customer']
 
 // Animated Chip Button
 function Chip({ label, isSelected, onClick }) {
@@ -56,6 +56,10 @@ const ChipGroup = memo(function ChipGroup({ options, selected, onSelect, allowCu
                     isSelected={selected === option}
                     onClick={() => {
                         setShowCustomInput(false)
+                        if (selected === option) {
+                            onSelect('')
+                            return
+                        }
                         onSelect(option)
                     }}
                 />
@@ -65,7 +69,15 @@ const ChipGroup = memo(function ChipGroup({ options, selected, onSelect, allowCu
                     <Chip
                         label="+ Custom"
                         isSelected={selected === 'custom'}
-                        onClick={handleCustomClick}
+                        onClick={() => {
+                            if (selected === 'custom') {
+                                setShowCustomInput(false)
+                                onSelect('')
+                                onCustomChange?.('')
+                                return
+                            }
+                            handleCustomClick()
+                        }}
                     />
                     <AnimatePresence>
                         {showCustomInput && (
