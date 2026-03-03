@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { onSessionChange, supabase, supabaseAnonKey, supabaseUrl } from '../lib/supabaseClient'
+import { apiMultipartPost } from '../lib/apiClient'
 
 function mapProvider(provider) {
     switch (provider) {
@@ -267,7 +268,7 @@ export function useAuth() {
         return { ok: true }
     }, [])
 
-    const updateProfile = useCallback(async ({ displayName, avatarUrl }) => {
+    const updateProfile = useCallback(async ({ displayName, avatarFile, avatarUrl }) => {
         if (!supabase || !user?.id) {
             const profileError = 'Not authenticated.'
             setError(profileError)
@@ -277,7 +278,26 @@ export function useAuth() {
         setError('')
 
         const nextDisplayName = String(displayName || '').trim().slice(0, 60)
-        const nextAvatarUrl = String(avatarUrl || '').trim().slice(0, 300)
+        let nextAvatarUrl = String(avatarUrl || '').trim().slice(0, 300)
+
+        if (avatarFile instanceof File) {
+            const formData = new FormData()
+            formData.append('file', avatarFile)
+
+            try {
+                const uploadResult = await apiMultipartPost('upload-avatar', formData, {
+                    timeoutMs: 60000,
+                })
+
+                if (uploadResult?.avatar_url) {
+                    nextAvatarUrl = String(uploadResult.avatar_url)
+                }
+            } catch (uploadError) {
+                const mappedError = mapAuthErrorMessage(uploadError.message)
+                setError(mappedError)
+                return { ok: false, error: mappedError }
+            }
+        }
 
         const { data, error: upsertError } = await supabase
             .from('profiles')

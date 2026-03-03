@@ -54,3 +54,6 @@ verify_jwt = false
 
 [functions."marketing-dispatch"]
 verify_jwt = false
+
+[functions."upload-avatar"]
+verify_jwt = false

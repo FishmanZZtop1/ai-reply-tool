@@ -44,6 +44,8 @@ export function useGenerator({ onSuccess }) {
                 ...request,
                 systemInstruction,
                 userPrompt,
+            }, {
+                timeoutMs: 60000,
             })
 
             const mapped = (data?.replies ?? []).map((text, index) => ({

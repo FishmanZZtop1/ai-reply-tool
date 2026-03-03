@@ -103,10 +103,79 @@ async function request(path, { method = 'GET', body, auth = true, queryParams, t
     }
 }
 
+async function requestMultipart(path, { method = 'POST', formData, auth = true, queryParams, timeoutMs = 30000 } = {}) {
+    assertSupabaseConfigured()
+
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), timeoutMs)
+
+    try {
+        const headers = {}
+
+        if (auth) {
+            const token = await getAccessToken()
+            if (!token) {
+                throw new ApiError('Authentication required.', {
+                    status: 401,
+                    code: 'auth_required',
+                })
+            }
+            headers.Authorization = `Bearer ${token}`
+        }
+
+        const response = await fetch(buildFunctionUrl(path, queryParams), {
+            method,
+            headers,
+            body: formData,
+            signal: controller.signal,
+        })
+
+        const contentType = response.headers.get('content-type') || ''
+        const payload = contentType.includes('application/json')
+            ? await response.json()
+            : null
+
+        if (!response.ok) {
+            throw new ApiError(
+                payload?.error || payload?.message || `Request failed with status ${response.status}`,
+                {
+                    status: response.status,
+                    code: payload?.code || 'request_failed',
+                    details: payload?.details || null,
+                },
+            )
+        }
+
+        return payload
+    } catch (error) {
+        if (error.name === 'AbortError') {
+            throw new ApiError('Request timed out.', {
+                status: 408,
+                code: 'request_timeout',
+            })
+        }
+
+        if (error instanceof ApiError) {
+            throw error
+        }
+
+        throw new ApiError(error.message || 'Unknown network error.', {
+            status: 500,
+            code: 'network_error',
+        })
+    } finally {
+        clearTimeout(timeout)
+    }
+}
+
 export function apiGet(path, options = {}) {
     return request(path, { ...options, method: 'GET' })
 }
 
 export function apiPost(path, body, options = {}) {
     return request(path, { ...options, method: 'POST', body })
+}
+
+export function apiMultipartPost(path, formData, options = {}) {
+    return requestMultipart(path, { ...options, method: 'POST', formData })
 }

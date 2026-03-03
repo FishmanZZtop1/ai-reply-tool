@@ -279,13 +279,14 @@ function App() {
         }
     }, [auth, deleteAccountLoading])
 
-    const handleProfileSave = useCallback(async ({ displayName, avatarUrl }) => {
+    const handleProfileSave = useCallback(async ({ displayName, avatarFile, avatarUrl }) => {
         setProfileUpdateError('')
         setProfileUpdateLoading(true)
 
         try {
             const result = await auth.updateProfile({
                 displayName,
+                avatarFile,
                 avatarUrl,
             })
 

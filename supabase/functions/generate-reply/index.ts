@@ -22,6 +22,7 @@ type GenerateRequest = {
 const CREDITS_PER_REQUEST = 100
 const MESSAGE_MAX = 6000
 const NOTES_MAX = 1200
+const GEMINI_TIMEOUT_MS = Number.parseInt(Deno.env.get('GEMINI_TIMEOUT_MS') || '25000', 10)
 
 function normalizeString(value: unknown, maxLength: number) {
   if (typeof value !== 'string') {
@@ -136,6 +137,58 @@ async function sha256(input: string) {
     .join('')
 }
 
+async function callGemini({
+  apiKey,
+  model,
+  prompt,
+  variations,
+}: {
+  apiKey: string
+  model: string
+  prompt: string
+  variations: number
+}) {
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), GEMINI_TIMEOUT_MS)
+
+  try {
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        signal: controller.signal,
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: {
+            temperature: 0.7,
+            topP: 0.9,
+            responseMimeType: 'application/json',
+            responseSchema: {
+              type: 'object',
+              properties: {
+                replies: {
+                  type: 'array',
+                  minItems: variations,
+                  maxItems: variations,
+                  items: { type: 'string' },
+                },
+              },
+              required: ['replies'],
+            },
+          },
+        }),
+      },
+    )
+
+    return response
+  } finally {
+    clearTimeout(timeout)
+  }
+}
+
 Deno.serve(async (request) => {
   if (request.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -232,37 +285,31 @@ Deno.serve(async (request) => {
       return errorResponse('GEMINI_API_KEY is missing.', 500, 'missing_env')
     }
 
-    const geminiResponse = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${geminiApiKey}`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: buildPrompt(input) }] }],
-          generationConfig: {
-            temperature: 0.7,
-            topP: 0.9,
-            responseMimeType: 'application/json',
-            responseSchema: {
-              type: 'object',
-              properties: {
-                replies: {
-                  type: 'array',
-                  minItems: input.variations,
-                  maxItems: input.variations,
-                  items: { type: 'string' },
-                },
-              },
-              required: ['replies'],
-            },
+    let geminiResponse: Response
+    try {
+      geminiResponse = await callGemini({
+        apiKey: geminiApiKey,
+        model: geminiModel,
+        prompt: buildPrompt(input),
+        variations: input.variations,
+      })
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        await admin.rpc('add_credits', {
+          p_user_id: user.id,
+          p_amount: CREDITS_PER_REQUEST,
+          p_reason: 'generation_refund',
+          p_metadata: {
+            ...metadata,
+            reason: 'model_timeout',
           },
-        }),
-      },
-    )
+        })
+        return errorResponse('Model request timed out. Please retry.', 504, 'model_timeout')
+      }
+      throw error
+    }
 
-    const geminiPayload = await geminiResponse.json()
+    const geminiPayload = await geminiResponse.json().catch(() => ({}))
     const rawText = geminiPayload?.candidates?.[0]?.content?.parts?.[0]?.text || ''
 
     if (!geminiResponse.ok || !rawText) {

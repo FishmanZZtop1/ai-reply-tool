@@ -16,6 +16,8 @@ const ProfileEditModal = memo(function ProfileEditModal({
 }) {
     const [displayName, setDisplayName] = useState('')
     const [avatarUrl, setAvatarUrl] = useState('')
+    const [avatarFile, setAvatarFile] = useState(null)
+    const [avatarPreviewUrl, setAvatarPreviewUrl] = useState('')
 
     useEffect(() => {
         if (!isOpen) {
@@ -23,20 +25,53 @@ const ProfileEditModal = memo(function ProfileEditModal({
         }
         setDisplayName(initialDisplayName || '')
         setAvatarUrl(initialAvatarUrl || '')
+        setAvatarFile(null)
+        setAvatarPreviewUrl('')
     }, [initialAvatarUrl, initialDisplayName, isOpen])
 
+    useEffect(() => {
+        return () => {
+            if (avatarPreviewUrl) {
+                URL.revokeObjectURL(avatarPreviewUrl)
+            }
+        }
+    }, [avatarPreviewUrl])
+
     const previewAvatar = useMemo(() => {
+        if (avatarPreviewUrl) {
+            return avatarPreviewUrl
+        }
+
         const candidate = avatarUrl.trim()
         if (!candidate) {
             return defaultAvatarUrl
         }
         return candidate
-    }, [avatarUrl, defaultAvatarUrl])
+    }, [avatarPreviewUrl, avatarUrl, defaultAvatarUrl])
+
+    const handleAvatarFileChange = (event) => {
+        const nextFile = event.target.files?.[0] || null
+        if (!nextFile) {
+            return
+        }
+
+        if (!nextFile.type.startsWith('image/')) {
+            return
+        }
+
+        if (avatarPreviewUrl) {
+            URL.revokeObjectURL(avatarPreviewUrl)
+        }
+
+        setAvatarFile(nextFile)
+        setAvatarPreviewUrl(URL.createObjectURL(nextFile))
+    }
 
     const handleSubmit = async (event) => {
         event.preventDefault()
         await onSave?.({
             displayName: displayName.trim(),
+            avatarFile,
             avatarUrl: avatarUrl.trim(),
         })
     }
@@ -115,16 +150,44 @@ const ProfileEditModal = memo(function ProfileEditModal({
                                 />
                             </label>
 
-                            <label className="block">
-                                <span className="text-xs font-medium text-gray-600">Avatar URL</span>
-                                <input
-                                    type="url"
-                                    value={avatarUrl}
-                                    onChange={(event) => setAvatarUrl(event.target.value.slice(0, 300))}
-                                    placeholder="https://..."
-                                    className="mt-1 w-full h-11 rounded-xl border border-gray-200 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-pink-200"
-                                />
-                            </label>
+                            <div className="block">
+                                <span className="text-xs font-medium text-gray-600">Avatar 图片头像</span>
+                                <div className="mt-1 rounded-xl border border-gray-200 px-3 py-3 bg-white">
+                                    <input
+                                        id="profile-avatar-upload"
+                                        type="file"
+                                        accept="image/*"
+                                        className="hidden"
+                                        onChange={handleAvatarFileChange}
+                                    />
+                                    <div className="flex items-center justify-between gap-2">
+                                        <label
+                                            htmlFor="profile-avatar-upload"
+                                            className="h-9 px-3 inline-flex items-center rounded-lg bg-gray-900 text-white text-xs font-semibold cursor-pointer"
+                                        >
+                                            上传图片
+                                        </label>
+                                        {avatarFile && (
+                                            <button
+                                                type="button"
+                                                className="h-9 px-3 rounded-lg border border-gray-200 text-xs font-medium text-gray-600"
+                                                onClick={() => {
+                                                    if (avatarPreviewUrl) {
+                                                        URL.revokeObjectURL(avatarPreviewUrl)
+                                                    }
+                                                    setAvatarFile(null)
+                                                    setAvatarPreviewUrl('')
+                                                }}
+                                            >
+                                                清除
+                                            </button>
+                                        )}
+                                    </div>
+                                    <div className="mt-2 text-xs text-gray-500 truncate">
+                                        {avatarFile ? avatarFile.name : '支持 PNG / JPG / WEBP，建议小于 5MB'}
+                                    </div>
+                                </div>
+                            </div>
 
                             {errorMessage && (
                                 <div role="alert" className="rounded-lg border border-red-200 bg-red-50 text-red-700 text-xs px-3 py-2">
