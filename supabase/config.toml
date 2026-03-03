@@ -49,6 +49,9 @@ verify_jwt = false
 [functions."generate-reply"]
 verify_jwt = false
 
+[functions."generation-status"]
+verify_jwt = false
+
 [functions."create-checkout"]
 verify_jwt = false
 

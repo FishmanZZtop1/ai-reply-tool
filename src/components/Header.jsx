@@ -267,11 +267,11 @@ function UserDropdown({
                                 </div>
                                 <div className="ml-8 text-[11px] text-amber-700 space-y-1">
                                     <div className="flex justify-between">
-                                        <span>Timed Credits (限时)</span>
+                                        <span>Timed Credits</span>
                                         <span className="font-semibold">{timedCredits}</span>
                                     </div>
                                     <div className="flex justify-between">
-                                        <span>Permanent Credits (永久)</span>
+                                        <span>Permanent Credits</span>
                                         <span className="font-semibold">{permanentCredits}</span>
                                     </div>
                                 </div>
@@ -504,11 +504,12 @@ const Header = memo(function Header({
                                 className="flex items-center gap-2 rounded-full px-3 py-1 text-left hover:bg-white/70 transition-colors"
                             >
                                 <Coins className="w-4 h-4 text-amber-600" strokeWidth={1.8} />
-                                <div className="leading-tight">
-                                    <div className="text-[11px] text-amber-700">
-                                        T:{creditSummary?.timedCredits ?? 0} | P:{creditSummary?.permanentCredits ?? 0}
-                                    </div>
-                                    <div className="text-xs font-bold text-amber-800">Total {creditSummary?.totalCredits ?? 0}</div>
+                                <div className="flex items-center gap-2 text-[11px] text-amber-800 whitespace-nowrap">
+                                    <span className="font-semibold">Timed Credits {creditSummary?.timedCredits ?? 0}</span>
+                                    <span className="text-amber-400">|</span>
+                                    <span className="font-semibold">Permanent Credits {creditSummary?.permanentCredits ?? 0}</span>
+                                    <span className="text-amber-400">|</span>
+                                    <span className="font-bold">Total Credits {creditSummary?.totalCredits ?? 0}</span>
                                 </div>
                             </button>
                             <button

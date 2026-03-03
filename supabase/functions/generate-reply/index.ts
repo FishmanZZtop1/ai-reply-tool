@@ -7,6 +7,7 @@ type GenerateRequest = {
   message?: string
   notes?: string
   language?: string
+  idempotency_key?: string
   variations?: number
   options?: {
     scene?: string
@@ -19,9 +20,16 @@ type GenerateRequest = {
   }
 }
 
+type WalletSnapshot = {
+  timed_credits: number
+  permanent_credits: number
+  total_credits: number
+}
+
 const CREDITS_PER_REQUEST = 100
 const MESSAGE_MAX = 6000
 const NOTES_MAX = 1200
+const IDEMPOTENCY_KEY_MAX = 96
 const GEMINI_TIMEOUT_MS = Number.parseInt(Deno.env.get('GEMINI_TIMEOUT_MS') || '25000', 10)
 
 function normalizeString(value: unknown, maxLength: number) {
@@ -39,6 +47,7 @@ function normalizeInput(payload: GenerateRequest) {
   const message = normalizeString(payload.message, MESSAGE_MAX)
   const notes = normalizeString(payload.notes || '', NOTES_MAX)
   const language = normalizeString(payload.language || 'auto', 20) || 'auto'
+  const idempotencyKey = normalizeString(payload.idempotency_key || '', IDEMPOTENCY_KEY_MAX)
 
   const rawVariations = Number.parseInt(String(payload.variations ?? 3), 10)
   const variations = Math.min(5, Math.max(1, Number.isFinite(rawVariations) ? rawVariations : 3))
@@ -47,6 +56,7 @@ function normalizeInput(payload: GenerateRequest) {
     message,
     notes,
     language,
+    idempotencyKey,
     variations,
     options: {
       scene: normalizeString(payload.options?.scene || '', 120),
@@ -67,7 +77,71 @@ function resolveOption(primary: string, custom: string) {
   return primary || custom || 'Not specified'
 }
 
-function buildPrompt(input: ReturnType<typeof normalizeInput>) {
+function inferLanguageFromText(text: string) {
+  if (/[\u3040-\u30FF\u31F0-\u31FF]/.test(text)) {
+    return 'ja'
+  }
+
+  if (/[\uAC00-\uD7AF]/.test(text)) {
+    return 'ko'
+  }
+
+  if (/[\u4E00-\u9FFF]/.test(text)) {
+    return 'zh'
+  }
+
+  if (/[\u0400-\u04FF]/.test(text)) {
+    return 'ru'
+  }
+
+  if (/[\u0600-\u06FF]/.test(text)) {
+    return 'ar'
+  }
+
+  if (/[\u0900-\u097F]/.test(text)) {
+    return 'hi'
+  }
+
+  return 'en'
+}
+
+function resolveEffectiveLanguage(requestedLanguage: string, message: string, notes: string) {
+  const normalizedRequested = requestedLanguage.toLowerCase()
+  if (!normalizedRequested || normalizedRequested === 'auto') {
+    return inferLanguageFromText(`${message}\n${notes}`)
+  }
+
+  return normalizedRequested
+}
+
+function mapLanguageLabel(languageCode: string) {
+  switch (languageCode) {
+    case 'zh':
+    case 'zh-cn':
+    case 'zh-hans':
+      return 'Chinese (Simplified)'
+    case 'zh-tw':
+    case 'zh-hk':
+    case 'zh-hant':
+      return 'Chinese (Traditional)'
+    case 'ja':
+      return 'Japanese'
+    case 'ko':
+      return 'Korean'
+    case 'en':
+      return 'English'
+    case 'ru':
+      return 'Russian'
+    case 'ar':
+      return 'Arabic'
+    case 'hi':
+      return 'Hindi'
+    default:
+      return languageCode
+  }
+}
+
+function buildPrompt(input: ReturnType<typeof normalizeInput>, effectiveLanguage: string) {
   const scene = resolveOption(input.options.scene, input.options.sceneCustom)
   const role = resolveOption(input.options.role, input.options.roleCustom)
 
@@ -77,7 +151,8 @@ function buildPrompt(input: ReturnType<typeof normalizeInput>) {
     style: input.options.style || 'Friendly',
     length: input.options.length || 'Shorter',
     emoji: input.options.emoji,
-    language: input.language,
+    language_requested: input.language,
+    language_effective: effectiveLanguage,
     variations: input.variations,
   }
 
@@ -94,7 +169,8 @@ function buildPrompt(input: ReturnType<typeof normalizeInput>) {
     `Additional Notes:\n${input.notes || 'None'}`,
     '',
     'Output requirements:',
-    '- Keep language consistent with the requested language option.',
+    `- Output language MUST be ${mapLanguageLabel(effectiveLanguage)}.`,
+    '- Do not mix multiple languages unless the original message intentionally mixes them.',
     '- Keep tone and role alignment precise.',
     '- Respect length preference (Shorter/Longer).',
     '- If emoji=false, do not include emoji.',
@@ -129,12 +205,28 @@ function extractReplies(rawText: string, expectedCount: number) {
     .slice(0, expectedCount)
 }
 
+function parseReplies(value: unknown) {
+  if (!Array.isArray(value)) {
+    return [] as string[]
+  }
+
+  return value
+    .map((reply) => (typeof reply === 'string' ? reply.trim() : ''))
+    .filter(Boolean)
+}
+
 async function sha256(input: string) {
   const encoded = new TextEncoder().encode(input)
   const digest = await crypto.subtle.digest('SHA-256', encoded)
   return Array.from(new Uint8Array(digest))
     .map((byte) => byte.toString(16).padStart(2, '0'))
     .join('')
+}
+
+async function deterministicRequestId(userId: string, idempotencyKey: string) {
+  const hex = await sha256(`${userId}:${idempotencyKey}`)
+  const base = hex.slice(0, 32)
+  return `${base.slice(0, 8)}-${base.slice(8, 12)}-4${base.slice(13, 16)}-a${base.slice(17, 20)}-${base.slice(20, 32)}`
 }
 
 async function callGemini({
@@ -189,6 +281,118 @@ async function callGemini({
   }
 }
 
+async function getWalletSnapshot(admin: ReturnType<typeof createAdminClient>, userId: string) {
+  const { error: refreshError } = await admin.rpc('refresh_timed_credits', {
+    p_user_id: userId,
+  })
+
+  if (refreshError) {
+    throw new Error(`wallet_refresh_failed:${refreshError.message}`)
+  }
+
+  const { data: wallet, error: walletError } = await admin
+    .from('wallets')
+    .select('timed_credits,permanent_credits')
+    .eq('user_id', userId)
+    .maybeSingle()
+
+  if (walletError) {
+    throw new Error(`wallet_fetch_failed:${walletError.message}`)
+  }
+
+  const timedCredits = Number(wallet?.timed_credits ?? 0)
+  const permanentCredits = Number(wallet?.permanent_credits ?? 0)
+
+  return {
+    timed_credits: timedCredits,
+    permanent_credits: permanentCredits,
+    total_credits: timedCredits + permanentCredits,
+  } as WalletSnapshot
+}
+
+async function findGenerationChargeLedger(
+  admin: ReturnType<typeof createAdminClient>,
+  userId: string,
+  requestId: string,
+) {
+  return admin
+    .from('credit_ledger')
+    .select('id,metadata')
+    .eq('user_id', userId)
+    .eq('reason', 'reply_generation')
+    .contains('metadata', { request_id: requestId })
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+}
+
+async function findGenerationRefundLedger(
+  admin: ReturnType<typeof createAdminClient>,
+  userId: string,
+  requestId: string,
+) {
+  return admin
+    .from('credit_ledger')
+    .select('id,metadata')
+    .eq('user_id', userId)
+    .eq('reason', 'generation_refund')
+    .contains('metadata', { request_id: requestId })
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+}
+
+function asObject(value: unknown) {
+  if (value && typeof value === 'object' && !Array.isArray(value)) {
+    return value as Record<string, unknown>
+  }
+
+  return {}
+}
+
+async function patchChargeLedgerMetadata(
+  admin: ReturnType<typeof createAdminClient>,
+  userId: string,
+  requestId: string,
+  patch: Record<string, unknown>,
+) {
+  const { data, error } = await findGenerationChargeLedger(admin, userId, requestId)
+
+  if (error || !data?.id) {
+    return
+  }
+
+  const nextMetadata = {
+    ...asObject(data.metadata),
+    ...patch,
+  }
+
+  await admin
+    .from('credit_ledger')
+    .update({ metadata: nextMetadata })
+    .eq('id', data.id)
+}
+
+async function refundCredits(
+  admin: ReturnType<typeof createAdminClient>,
+  userId: string,
+  amount: number,
+  metadata: Record<string, unknown>,
+) {
+  const { error } = await admin.rpc('add_credits', {
+    p_user_id: userId,
+    p_amount: amount,
+    p_reason: 'generation_refund',
+    p_metadata: metadata,
+  })
+
+  return !error
+}
+
+function isRecoverableStatus(status: string) {
+  return status !== 'success' && status !== 'running'
+}
+
 Deno.serve(async (request) => {
   if (request.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -199,11 +403,17 @@ Deno.serve(async (request) => {
   }
 
   const admin = createAdminClient()
-  const requestId = crypto.randomUUID()
+  let activeUserId = ''
+  let activeRequestId = ''
+  let activeIdempotencyKey = ''
+  let creditsConsumed = false
+  let refundApplied = false
   const startedAt = Date.now()
 
   try {
     const user = await requireUser(request)
+    activeUserId = user.id
+
     const body = await readJsonBody<GenerateRequest>(request)
     const input = normalizeInput(body)
 
@@ -211,7 +421,80 @@ Deno.serve(async (request) => {
       return errorResponse('Message is required.', 400, 'validation_error')
     }
 
+    const idempotencyKey = input.idempotencyKey || crypto.randomUUID()
+    activeIdempotencyKey = idempotencyKey
+    const requestId = await deterministicRequestId(user.id, idempotencyKey)
+    activeRequestId = requestId
+
+    const { data: existingEvent, error: existingEventError } = await admin
+      .from('generation_events')
+      .select('request_id,status,language,model,latency_ms')
+      .eq('user_id', user.id)
+      .eq('request_id', requestId)
+      .maybeSingle()
+
+    if (existingEventError) {
+      return errorResponse(existingEventError.message, 500, 'generation_lookup_error')
+    }
+
+    if (existingEvent) {
+      if (existingEvent.status === 'success') {
+        const walletSnapshot = await getWalletSnapshot(admin, user.id)
+        const { data: chargeRow } = await findGenerationChargeLedger(admin, user.id, requestId)
+        const chargeMetadata = asObject(chargeRow?.metadata)
+        const replies = parseReplies(chargeMetadata.replies)
+
+        if (!replies.length) {
+          return jsonResponse({
+            request_id: requestId,
+            idempotency_key: idempotencyKey,
+            status: 'running',
+          }, 202)
+        }
+
+        return jsonResponse({
+          request_id: requestId,
+          idempotency_key: idempotencyKey,
+          status: 'success',
+          replies,
+          credits_charged: Number(chargeMetadata.credits_charged ?? CREDITS_PER_REQUEST),
+          remaining_timed_credits: walletSnapshot.timed_credits,
+          remaining_permanent_credits: walletSnapshot.permanent_credits,
+          remaining_credits: walletSnapshot.total_credits,
+          language: String(chargeMetadata.language || existingEvent.language || 'auto'),
+          idempotent_replay: true,
+        })
+      }
+
+      if (existingEvent.status === 'running') {
+        return jsonResponse({
+          request_id: requestId,
+          idempotency_key: idempotencyKey,
+          status: 'running',
+        }, 202)
+      }
+
+      const { data: refundRow } = await findGenerationRefundLedger(admin, user.id, requestId)
+      const refundMetadata = asObject(refundRow?.metadata)
+      const errorMessage = String(refundMetadata.error_message || 'Previous generation request failed. Please regenerate.')
+      const errorCode = String(refundMetadata.error_code || existingEvent.status || 'generation_failed')
+
+      return errorResponse(
+        errorMessage,
+        409,
+        'request_previously_failed',
+        {
+          request_id: requestId,
+          idempotency_key: idempotencyKey,
+          status: 'failed',
+          error_code: errorCode,
+          can_regenerate: isRecoverableStatus(errorCode),
+        },
+      )
+    }
+
     const messageHash = await sha256(input.message)
+    const effectiveLanguage = resolveEffectiveLanguage(input.language, input.message, input.notes)
 
     const rateKey = `${user.id}:${getClientIp(request)}`
     const { data: allowed, error: rateLimitError } = await admin.rpc('enforce_rate_limit', {
@@ -228,34 +511,46 @@ Deno.serve(async (request) => {
       return errorResponse('Too many requests. Please retry in a minute.', 429, 'rate_limited')
     }
 
-    const { error: refreshError } = await admin.rpc('refresh_timed_credits', {
-      p_user_id: user.id,
-    })
+    const walletSnapshot = await getWalletSnapshot(admin, user.id)
 
-    if (refreshError) {
-      return errorResponse(refreshError.message, 500, 'wallet_refresh_error')
-    }
-
-    const { data: wallet, error: walletError } = await admin
-      .from('wallets')
-      .select('timed_credits,permanent_credits')
-      .eq('user_id', user.id)
-      .maybeSingle()
-
-    if (walletError) {
-      return errorResponse(walletError.message, 500, 'wallet_error')
-    }
-
-    const totalCredits = (wallet?.timed_credits ?? 0) + (wallet?.permanent_credits ?? 0)
-    if (totalCredits < CREDITS_PER_REQUEST) {
+    if (walletSnapshot.total_credits < CREDITS_PER_REQUEST) {
       return errorResponse('Insufficient credits.', 402, 'insufficient_credits')
+    }
+
+    const geminiModel = Deno.env.get('GEMINI_MODEL') || 'gemini-2.0-flash'
+
+    const { error: insertEventError } = await admin
+      .from('generation_events')
+      .insert({
+        user_id: user.id,
+        request_id: requestId,
+        message_hash: messageHash,
+        input_char_count: input.message.length,
+        variations: input.variations,
+        language: effectiveLanguage,
+        model: geminiModel,
+        status: 'running',
+      })
+
+    if (insertEventError) {
+      if (insertEventError.code === '23505') {
+        return jsonResponse({
+          request_id: requestId,
+          idempotency_key: idempotencyKey,
+          status: 'running',
+        }, 202)
+      }
+
+      return errorResponse(insertEventError.message, 500, 'generation_create_error')
     }
 
     const metadata = {
       request_id: requestId,
-      language: input.language,
+      idempotency_key: idempotencyKey,
+      language: effectiveLanguage,
       variations: input.variations,
       source: 'generation',
+      credits_charged: CREDITS_PER_REQUEST,
     }
 
     const { data: consumeResult, error: consumeError } = await admin.rpc('consume_credits', {
@@ -266,22 +561,47 @@ Deno.serve(async (request) => {
     })
 
     if (consumeError) {
+      await admin
+        .from('generation_events')
+        .update({
+          status: 'credit_consume_failed',
+          latency_ms: Date.now() - startedAt,
+        })
+        .eq('request_id', requestId)
+
       if (String(consumeError.message).includes('INSUFFICIENT_CREDITS')) {
         return errorResponse('Insufficient credits.', 402, 'insufficient_credits')
       }
+
       return errorResponse(consumeError.message, 500, 'credit_consume_failed')
     }
 
-    const geminiApiKey = Deno.env.get('GEMINI_API_KEY')
-    const geminiModel = Deno.env.get('GEMINI_MODEL') || 'gemini-2.0-flash'
+    creditsConsumed = true
 
+    const geminiApiKey = Deno.env.get('GEMINI_API_KEY')
     if (!geminiApiKey) {
-      await admin.rpc('add_credits', {
-        p_user_id: user.id,
-        p_amount: CREDITS_PER_REQUEST,
-        p_reason: 'generation_refund',
-        p_metadata: { ...metadata, reason: 'missing_gemini_key' },
+      refundApplied = await refundCredits(admin, user.id, CREDITS_PER_REQUEST, {
+        ...metadata,
+        reason: 'missing_gemini_key',
+        error_code: 'missing_env',
+        error_message: 'GEMINI_API_KEY is missing.',
       })
+
+      await admin
+        .from('generation_events')
+        .update({
+          status: 'missing_env',
+          latency_ms: Date.now() - startedAt,
+        })
+        .eq('request_id', requestId)
+
+      await patchChargeLedgerMetadata(admin, user.id, requestId, {
+        status: 'failed',
+        error_code: 'missing_env',
+        error_message: 'GEMINI_API_KEY is missing.',
+        refund_applied: refundApplied,
+      })
+
       return errorResponse('GEMINI_API_KEY is missing.', 500, 'missing_env')
     }
 
@@ -290,22 +610,39 @@ Deno.serve(async (request) => {
       geminiResponse = await callGemini({
         apiKey: geminiApiKey,
         model: geminiModel,
-        prompt: buildPrompt(input),
+        prompt: buildPrompt(input, effectiveLanguage),
         variations: input.variations,
       })
     } catch (error) {
       if (error instanceof DOMException && error.name === 'AbortError') {
-        await admin.rpc('add_credits', {
-          p_user_id: user.id,
-          p_amount: CREDITS_PER_REQUEST,
-          p_reason: 'generation_refund',
-          p_metadata: {
-            ...metadata,
-            reason: 'model_timeout',
-          },
+        refundApplied = await refundCredits(admin, user.id, CREDITS_PER_REQUEST, {
+          ...metadata,
+          reason: 'model_timeout',
+          error_code: 'model_timeout',
+          error_message: 'Model request timed out. Please retry.',
         })
-        return errorResponse('Model request timed out. Please retry.', 504, 'model_timeout')
+
+        await admin
+          .from('generation_events')
+          .update({
+            status: 'model_timeout',
+            latency_ms: Date.now() - startedAt,
+          })
+          .eq('request_id', requestId)
+
+        await patchChargeLedgerMetadata(admin, user.id, requestId, {
+          status: 'failed',
+          error_code: 'model_timeout',
+          error_message: 'Model request timed out. Please retry.',
+          refund_applied: refundApplied,
+        })
+
+        return errorResponse('Model request timed out. Please retry.', 504, 'model_timeout', {
+          request_id: requestId,
+          idempotency_key: idempotencyKey,
+        })
       }
+
       throw error
     }
 
@@ -313,69 +650,143 @@ Deno.serve(async (request) => {
     const rawText = geminiPayload?.candidates?.[0]?.content?.parts?.[0]?.text || ''
 
     if (!geminiResponse.ok || !rawText) {
-      await admin.rpc('add_credits', {
-        p_user_id: user.id,
-        p_amount: CREDITS_PER_REQUEST,
-        p_reason: 'generation_refund',
-        p_metadata: {
-          ...metadata,
-          reason: 'model_failure',
-        },
+      const modelErrorMessage = geminiPayload?.error?.message || 'Failed to generate reply.'
+
+      refundApplied = await refundCredits(admin, user.id, CREDITS_PER_REQUEST, {
+        ...metadata,
+        reason: 'model_failure',
+        error_code: 'model_error',
+        error_message: modelErrorMessage,
+      })
+
+      await admin
+        .from('generation_events')
+        .update({
+          status: 'model_error',
+          latency_ms: Date.now() - startedAt,
+        })
+        .eq('request_id', requestId)
+
+      await patchChargeLedgerMetadata(admin, user.id, requestId, {
+        status: 'failed',
+        error_code: 'model_error',
+        error_message: modelErrorMessage,
+        refund_applied: refundApplied,
       })
 
       return errorResponse(
-        geminiPayload?.error?.message || 'Failed to generate reply.',
+        modelErrorMessage,
         502,
         'model_error',
-        geminiPayload,
+        {
+          request_id: requestId,
+          idempotency_key: idempotencyKey,
+        },
       )
     }
 
     const replies = extractReplies(rawText, input.variations)
     if (!replies.length) {
-      await admin.rpc('add_credits', {
-        p_user_id: user.id,
-        p_amount: CREDITS_PER_REQUEST,
-        p_reason: 'generation_refund',
-        p_metadata: {
-          ...metadata,
-          reason: 'empty_output',
-        },
+      refundApplied = await refundCredits(admin, user.id, CREDITS_PER_REQUEST, {
+        ...metadata,
+        reason: 'empty_output',
+        error_code: 'empty_model_output',
+        error_message: 'Model returned empty output.',
       })
-      return errorResponse('Model returned empty output.', 502, 'empty_model_output')
+
+      await admin
+        .from('generation_events')
+        .update({
+          status: 'empty_output',
+          latency_ms: Date.now() - startedAt,
+        })
+        .eq('request_id', requestId)
+
+      await patchChargeLedgerMetadata(admin, user.id, requestId, {
+        status: 'failed',
+        error_code: 'empty_model_output',
+        error_message: 'Model returned empty output.',
+        refund_applied: refundApplied,
+      })
+
+      return errorResponse('Model returned empty output.', 502, 'empty_model_output', {
+        request_id: requestId,
+        idempotency_key: idempotencyKey,
+      })
     }
 
     const latencyMs = Date.now() - startedAt
 
     await admin
       .from('generation_events')
-      .insert({
-        user_id: user.id,
-        request_id: requestId,
-        message_hash: messageHash,
-        input_char_count: input.message.length,
-        variations: input.variations,
-        language: input.language,
-        model: geminiModel,
+      .update({
         status: 'success',
         latency_ms: latencyMs,
       })
+      .eq('request_id', requestId)
+
+    await patchChargeLedgerMetadata(admin, user.id, requestId, {
+      status: 'success',
+      language: effectiveLanguage,
+      replies,
+      completed_at: new Date().toISOString(),
+      refund_applied: false,
+    })
 
     return jsonResponse({
       request_id: requestId,
+      idempotency_key: idempotencyKey,
+      status: 'success',
       replies,
       credits_charged: CREDITS_PER_REQUEST,
       remaining_timed_credits: Number(consumeResult?.timed_credits ?? 0),
       remaining_permanent_credits: Number(consumeResult?.permanent_credits ?? 0),
       remaining_credits: Number(consumeResult?.total_credits ?? 0),
+      language: effectiveLanguage,
     })
   } catch (error) {
+    if (activeRequestId && activeUserId) {
+      if (creditsConsumed && !refundApplied) {
+        refundApplied = await refundCredits(admin, activeUserId, CREDITS_PER_REQUEST, {
+          request_id: activeRequestId,
+          idempotency_key: activeIdempotencyKey,
+          source: 'generation',
+          reason: 'unexpected_internal_error',
+          error_code: 'internal_error',
+          error_message: error.message || 'Unexpected error.',
+        })
+      }
+
+      await admin
+        .from('generation_events')
+        .update({
+          status: 'internal_error',
+          latency_ms: Date.now() - startedAt,
+        })
+        .eq('request_id', activeRequestId)
+
+      await patchChargeLedgerMetadata(admin, activeUserId, activeRequestId, {
+        status: 'failed',
+        error_code: 'internal_error',
+        error_message: error.message || 'Unexpected error.',
+        refund_applied: refundApplied,
+      })
+    }
+
     if (error.message === 'unauthorized') {
       return errorResponse('Authentication required.', 401, 'auth_required')
     }
 
     if (error.message === 'invalid_json') {
       return errorResponse('Invalid JSON body.', 400, 'invalid_json')
+    }
+
+    if (String(error.message || '').startsWith('wallet_refresh_failed:')) {
+      return errorResponse(error.message.replace('wallet_refresh_failed:', ''), 500, 'wallet_refresh_error')
+    }
+
+    if (String(error.message || '').startsWith('wallet_fetch_failed:')) {
+      return errorResponse(error.message.replace('wallet_fetch_failed:', ''), 500, 'wallet_error')
     }
 
     return errorResponse(error.message || 'Unexpected error.', 500, 'internal_error')
