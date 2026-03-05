@@ -48,7 +48,7 @@ export default function Footer() {
                             href="mailto:hello@aireplytool.com"
                             className="text-sm text-gray-500 hover:text-pink-600 transition-colors"
                         >
-                            hello@aireplytool.com
+                            Contact Team: hello@aireplytool.com
                         </a>
                     </nav>
                 </div>
