@@ -248,6 +248,11 @@ Deno.serve(async (request) => {
       .select('rate_key')
 
     if (eventPersistError) {
+      const code = String(eventPersistError.code || '')
+      const message = String(eventPersistError.message || '').toLowerCase()
+      if (code === '23505' || message.includes('duplicate key value')) {
+        return jsonResponse({ ok: true, duplicate: true })
+      }
       return errorResponse(eventPersistError.message, 500, 'event_persist_error')
     }
 
