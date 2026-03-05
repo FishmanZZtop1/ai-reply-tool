@@ -241,7 +241,9 @@ const PricingModal = memo(function PricingModal({ isOpen, onClose, onCheckout, c
                                         <div className="inline-flex p-1 bg-white/80 rounded-full shadow-sm">
                                             <motion.button
                                                 onClick={() => setMonthlyType('subscription')}
-                                                className={`px-4 py-2 rounded-full text-xs font-semibold ${monthlyType === 'subscription' ? 'bg-white text-gray-800 shadow-md' : 'text-gray-500'}`}
+                                                className={`px-4 py-2 rounded-full text-xs font-semibold ${monthlyType === 'subscription'
+                                                    ? 'bg-gradient-to-r from-[#E413A2] to-[#FF789A] text-white shadow-md'
+                                                    : 'text-gray-500'}`}
                                                 whileHover={{ scale: 1.02 }}
                                                 whileTap={{ scale: 0.98 }}
                                             >
@@ -249,7 +251,9 @@ const PricingModal = memo(function PricingModal({ isOpen, onClose, onCheckout, c
                                             </motion.button>
                                             <motion.button
                                                 onClick={() => setMonthlyType('single')}
-                                                className={`px-4 py-2 rounded-full text-xs font-semibold ${monthlyType === 'single' ? 'bg-white text-gray-800 shadow-md' : 'text-gray-500'}`}
+                                                className={`px-4 py-2 rounded-full text-xs font-semibold ${monthlyType === 'single'
+                                                    ? 'bg-gradient-to-r from-[#E413A2] to-[#FF789A] text-white shadow-md'
+                                                    : 'text-gray-500'}`}
                                                 whileHover={{ scale: 1.02 }}
                                                 whileTap={{ scale: 0.98 }}
                                             >
