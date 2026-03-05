@@ -83,7 +83,7 @@ Deno.serve(async (request) => {
         plan_code: plan.plan_code,
       },
       customer: {
-        email: user.email,
+        email: 'hello@aireplytool.com',
       },
     }
 
