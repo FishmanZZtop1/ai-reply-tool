@@ -164,12 +164,12 @@ const PricingModal = memo(function PricingModal({ isOpen, onClose, onCheckout, c
                                 >
                                     <div className="text-center mb-6">
                                         <div className="text-4xl mb-3">💎</div>
-                                        <h3 className="text-xl font-bold text-gray-900 mb-1">Credit Pack</h3>
-                                        <p className="text-gray-400 text-xs">First purchase bonus</p>
+                                        <h3 className="text-xl font-bold text-gray-900 mb-1">2000 Credits Welcome Pack</h3>
+                                        <p className="text-gray-400 text-xs">One-time purchase</p>
                                     </div>
 
                                     <div className="text-center mb-6">
-                                        <div className="text-4xl font-bold bg-gradient-to-r from-[#E413A2] to-[#FF789A] bg-clip-text text-transparent">$1.99</div>
+                                        <div className="text-4xl font-bold bg-gradient-to-r from-[#E413A2] to-[#FF789A] bg-clip-text text-transparent">$2.99</div>
                                         <div className="text-sm text-gray-400 line-through mt-1">$8.8</div>
                                     </div>
 
@@ -233,7 +233,7 @@ const PricingModal = memo(function PricingModal({ isOpen, onClose, onCheckout, c
 
                                     <div className="text-center mb-4 pt-2">
                                         <div className="text-4xl mb-3">👑</div>
-                                        <h3 className="text-xl font-bold text-gray-900 mb-1">Monthly Pro</h3>
+                                        <h3 className="text-xl font-bold text-gray-900 mb-1">Pro Membership</h3>
                                     </div>
 
                                     {/* Toggle */}
@@ -245,7 +245,7 @@ const PricingModal = memo(function PricingModal({ isOpen, onClose, onCheckout, c
                                                 whileHover={{ scale: 1.02 }}
                                                 whileTap={{ scale: 0.98 }}
                                             >
-                                                Auto-renew
+                                                Auto-renewal
                                             </motion.button>
                                             <motion.button
                                                 onClick={() => setMonthlyType('single')}
@@ -253,7 +253,7 @@ const PricingModal = memo(function PricingModal({ isOpen, onClose, onCheckout, c
                                                 whileHover={{ scale: 1.02 }}
                                                 whileTap={{ scale: 0.98 }}
                                             >
-                                                One-time
+                                                No renewal
                                             </motion.button>
                                         </div>
                                     </div>
@@ -266,7 +266,7 @@ const PricingModal = memo(function PricingModal({ isOpen, onClose, onCheckout, c
                                             animate={{ opacity: 1, y: 0 }}
                                             transition={{ type: 'spring', stiffness: 300 }}
                                         >
-                                            ${monthlyType === 'subscription' ? '29.8' : '39.8'}
+                                            ${monthlyType === 'subscription' ? '29.9' : '39.9'}
                                         </motion.div>
                                         <div className="text-xs text-gray-500 mt-1">
                                             {monthlyType === 'subscription' ? 'Cancel anytime' : '/month'}

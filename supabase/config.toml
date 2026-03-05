@@ -28,7 +28,7 @@ additional_redirect_urls = ["https://aireplytool.com"]
 [edge_runtime]
 enabled = true
 
-[functions."lemon-webhook"]
+[functions."creem-webhook"]
 verify_jwt = false
 
 [functions."config-options"]

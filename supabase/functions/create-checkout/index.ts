@@ -7,6 +7,27 @@ type CheckoutBody = {
   plan_code?: string
 }
 
+const CREEM_PRODUCT_ENV_BY_PLAN: Record<string, string> = {
+  credit_pack_starter: 'CREEM_PRODUCT_ID_CREDIT_PACK_STARTER',
+  monthly_pro_auto: 'CREEM_PRODUCT_ID_MONTHLY_PRO_AUTO',
+  monthly_pro_once: 'CREEM_PRODUCT_ID_MONTHLY_PRO_ONCE',
+  lifetime_pro: 'CREEM_PRODUCT_ID_LIFETIME_PRO',
+}
+
+function resolveCreemApiBaseUrl(apiKey: string) {
+  if (apiKey.startsWith('creem_test_')) {
+    return 'https://test-api.creem.io'
+  }
+
+  return 'https://api.creem.io'
+}
+
+function resolveCreemProductId(planCode: string) {
+  const envName = CREEM_PRODUCT_ENV_BY_PLAN[planCode]
+  if (!envName) return ''
+  return Deno.env.get(envName) || ''
+}
+
 Deno.serve(async (request) => {
   if (request.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -24,18 +45,17 @@ Deno.serve(async (request) => {
       return errorResponse('plan_code is required.', 400, 'validation_error')
     }
 
-    const lemonApiKey = Deno.env.get('LEMON_API_KEY')
-    const lemonStoreId = Deno.env.get('LEMON_STORE_ID')
+    const creemApiKey = Deno.env.get('CREEM_API_KEY')
     const appBaseUrl = Deno.env.get('APP_BASE_URL') || 'https://aireplytool.com'
 
-    if (!lemonApiKey || !lemonStoreId) {
-      return errorResponse('Lemon Squeezy env is missing.', 500, 'missing_env')
+    if (!creemApiKey) {
+      return errorResponse('CREEM_API_KEY is missing.', 500, 'missing_env')
     }
 
     const admin = createAdminClient()
     const { data: plan, error: planError } = await admin
       .from('plans')
-      .select('plan_code, lemon_variant_id')
+      .select('plan_code')
       .eq('plan_code', body.plan_code)
       .eq('is_active', true)
       .maybeSingle()
@@ -44,63 +64,64 @@ Deno.serve(async (request) => {
       return errorResponse('Invalid plan code.', 400, 'invalid_plan')
     }
 
-    const lemonPayload = {
-      data: {
-        type: 'checkouts',
-        attributes: {
-          checkout_data: {
-            email: user.email,
-            custom: {
-              user_id: user.id,
-              plan_code: plan.plan_code,
-            },
-          },
-          product_options: {
-            redirect_url: `${appBaseUrl}/?checkout=success`,
-            receipt_link_url: appBaseUrl,
-            receipt_button_text: 'Return to AI Reply',
-          },
-        },
-        relationships: {
-          store: {
-            data: {
-              type: 'stores',
-              id: lemonStoreId,
-            },
-          },
-          variant: {
-            data: {
-              type: 'variants',
-              id: plan.lemon_variant_id,
-            },
-          },
-        },
-      },
-    }
-
-    const lemonResponse = await fetch('https://api.lemonsqueezy.com/v1/checkouts', {
-      method: 'POST',
-      headers: {
-        Accept: 'application/vnd.api+json',
-        'Content-Type': 'application/vnd.api+json',
-        Authorization: `Bearer ${lemonApiKey}`,
-      },
-      body: JSON.stringify(lemonPayload),
-    })
-
-    const lemonData = await lemonResponse.json()
-
-    if (!lemonResponse.ok) {
+    const creemProductId = resolveCreemProductId(plan.plan_code)
+    if (!creemProductId) {
       return errorResponse(
-        lemonData?.errors?.[0]?.detail || 'Failed to create checkout.',
-        502,
-        'lemon_checkout_failed',
-        lemonData,
+        `Missing Creem product mapping for ${plan.plan_code}. Set ${CREEM_PRODUCT_ENV_BY_PLAN[plan.plan_code] || 'CREEM_PRODUCT_ID_*'} secret.`,
+        500,
+        'missing_creem_product_mapping',
       )
     }
 
+    const creemApiBaseUrl = resolveCreemApiBaseUrl(creemApiKey)
+    const creemPayload = {
+      product_id: creemProductId,
+      request_id: `aireply_${crypto.randomUUID()}`,
+      success_url: `${appBaseUrl}/?checkout=success`,
+      metadata: {
+        user_id: user.id,
+        plan_code: plan.plan_code,
+      },
+      customer: {
+        email: user.email,
+      },
+    }
+
+    const creemResponse = await fetch(`${creemApiBaseUrl}/v1/checkouts`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': creemApiKey,
+      },
+      body: JSON.stringify(creemPayload),
+    })
+
+    const creemData = await creemResponse.json().catch(() => ({}))
+
+    if (!creemResponse.ok) {
+      return errorResponse(
+        creemData?.message
+          || creemData?.error?.message
+          || 'Failed to create Creem checkout.',
+        502,
+        'creem_checkout_failed',
+        creemData,
+      )
+    }
+
+    const checkoutUrl = String(
+      creemData?.checkout_url
+      || creemData?.url
+      || creemData?.data?.checkout_url
+      || '',
+    )
+
+    if (!checkoutUrl) {
+      return errorResponse('Creem checkout URL missing in API response.', 502, 'creem_checkout_response_invalid', creemData)
+    }
+
     return jsonResponse({
-      checkout_url: lemonData?.data?.attributes?.url,
+      checkout_url: checkoutUrl,
     })
   } catch (error) {
     if (error.message === 'unauthorized') {

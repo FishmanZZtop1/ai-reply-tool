@@ -44,7 +44,7 @@ create table if not exists public.plans (
     plan_code text unique not null,
     display_name text not null,
     plan_type public.plan_type not null,
-    lemon_variant_id text unique not null,
+    creem_product_id text unique,
     credits_delta integer not null check (credits_delta > 0),
     billing_cycle text not null default 'one_time',
     price_usd numeric(10, 2) not null,
@@ -57,7 +57,7 @@ create table if not exists public.user_subscriptions (
     id uuid primary key default gen_random_uuid(),
     user_id uuid not null references auth.users(id) on delete cascade,
     plan_code text references public.plans(plan_code),
-    lemon_subscription_id text unique,
+    external_subscription_id text unique,
     status text not null default 'inactive',
     current_period_end timestamptz,
     created_at timestamptz not null default now(),
@@ -66,7 +66,7 @@ create table if not exists public.user_subscriptions (
 
 create index if not exists user_subscriptions_user_idx on public.user_subscriptions (user_id, created_at desc);
 
-create table if not exists public.lemon_events (
+create table if not exists public.creem_events (
     id uuid primary key default gen_random_uuid(),
     event_id text not null unique,
     event_name text not null,
@@ -355,17 +355,17 @@ create policy option_catalog_public_read on public.option_catalog
 for select
 using (is_active = true);
 
-insert into public.plans (plan_code, display_name, plan_type, lemon_variant_id, credits_delta, billing_cycle, price_usd, is_active)
+insert into public.plans (plan_code, display_name, plan_type, creem_product_id, credits_delta, billing_cycle, price_usd, is_active)
 values
-    ('credit_pack_starter', 'Credit Pack', 'credit_pack', '1307053', 2000, 'one_time', 1.99, true),
-    ('monthly_pro_auto', 'Monthly Pro (Auto)', 'subscription', '1307111', 2000, 'monthly', 29.80, true),
-    ('monthly_pro_once', 'Monthly Pro (One-time)', 'subscription', '1307127', 2000, 'one_time', 39.80, true),
-    ('lifetime_pro', 'Lifetime Pro', 'lifetime', '1307136', 5000, 'lifetime', 188.00, true)
+    ('credit_pack_starter', 'Credit Pack', 'credit_pack', null, 2000, 'one_time', 1.99, true),
+    ('monthly_pro_auto', 'Monthly Pro (Auto)', 'subscription', null, 2000, 'monthly', 29.80, true),
+    ('monthly_pro_once', 'Monthly Pro (One-time)', 'subscription', null, 2000, 'one_time', 39.80, true),
+    ('lifetime_pro', 'Lifetime Pro', 'lifetime', null, 5000, 'lifetime', 188.00, true)
 on conflict (plan_code)
 do update set
     display_name = excluded.display_name,
     plan_type = excluded.plan_type,
-    lemon_variant_id = excluded.lemon_variant_id,
+    creem_product_id = excluded.creem_product_id,
     credits_delta = excluded.credits_delta,
     billing_cycle = excluded.billing_cycle,
     price_usd = excluded.price_usd,
