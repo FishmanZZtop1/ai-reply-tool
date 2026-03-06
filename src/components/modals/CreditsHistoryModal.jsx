@@ -50,37 +50,44 @@ const CreditsHistoryModal = memo(function CreditsHistoryModal({ isOpen, onClose,
                         exit="exit"
                     >
                         {/* Header */}
-                        <div className="p-6 border-b border-gray-100 flex items-center justify-between shrink-0">
-                            <div>
-                                <h2 className="text-xl font-bold text-gray-900">Credits History</h2>
-                                <p className="text-sm text-gray-500 mt-1">Track your usage and recharges</p>
-                                <div className="mt-4 grid grid-cols-3 gap-4">
-                                    <div className="text-center">
-                                        <div className="text-[11px] uppercase tracking-wide text-gray-400">Total Credits</div>
-                                        <div className="text-lg font-bold text-gray-900 mt-1">{totalCredits}</div>
-                                    </div>
-                                    <div className="text-center">
-                                        <div className="text-[11px] uppercase tracking-wide text-gray-400">Permanent Credits</div>
-                                        <div className="text-lg font-bold text-gray-900 mt-1">{permanentCredits}</div>
-                                    </div>
-                                    <div className="text-center">
-                                        <div className="text-[11px] uppercase tracking-wide text-gray-400">Timed Credits</div>
-                                        <div className="text-lg font-bold text-gray-900 mt-1">{timedCredits}</div>
-                                    </div>
-                                </div>
-                                <div className="mt-2 text-[11px] text-gray-400 italic">
-                                    The system will automatically use timed credits first.
-                                </div>
-                            </div>
+                        <div className="relative p-6 border-b border-gray-100 shrink-0">
                             <motion.button
                                 onClick={onClose}
                                 aria-label="Close credits history modal"
-                                className="w-8 h-8 flex items-center justify-center rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+                                className="absolute top-6 right-6 w-8 h-8 flex items-center justify-center rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
                                 whileHover={{ scale: 1.1 }}
                                 whileTap={{ scale: 0.9 }}
                             >
                                 <X className="w-5 h-5" />
                             </motion.button>
+
+                            <div className="pr-12">
+                                <h2 className="text-xl font-bold text-gray-900">Credits History</h2>
+                                <p className="text-sm text-gray-500 mt-1">Track your usage and recharges</p>
+                                <div className="mt-4 grid grid-cols-3 gap-4 items-start">
+                                    <div className="text-center">
+                                        <div className="min-h-[2.5rem] text-[11px] uppercase tracking-wide text-gray-400 flex items-center justify-center">
+                                            Total Credits
+                                        </div>
+                                        <div className="text-lg font-bold text-gray-900">{totalCredits}</div>
+                                    </div>
+                                    <div className="text-center">
+                                        <div className="min-h-[2.5rem] text-[11px] uppercase tracking-wide text-gray-400 flex items-center justify-center">
+                                            Permanent Credits
+                                        </div>
+                                        <div className="text-lg font-bold text-gray-900">{permanentCredits}</div>
+                                    </div>
+                                    <div className="text-center">
+                                        <div className="min-h-[2.5rem] text-[11px] uppercase tracking-wide text-gray-400 flex items-center justify-center">
+                                            Timed Credits
+                                        </div>
+                                        <div className="text-lg font-bold text-gray-900">{timedCredits}</div>
+                                    </div>
+                                </div>
+                                <div className="mt-3 text-xs text-[#E413A2] italic text-center">
+                                    The system will automatically use timed credits first.
+                                </div>
+                            </div>
                         </div>
 
                         {/* List - Scrollable */}
