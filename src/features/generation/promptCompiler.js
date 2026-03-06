@@ -10,6 +10,10 @@ function resolveValue(primary, customValue) {
 
 export function buildGenerationPrompt(rawInput) {
     const input = normalizeGenerationInput(rawInput)
+    const hasOriginalMessage = Boolean(input.message)
+    const originalMessage = hasOriginalMessage
+        ? input.message
+        : '[No original message provided. Use Writer Intent Notes as the primary context.]'
 
     const scene = resolveValue(input.options.scene, input.options.sceneCustom)
     const role = resolveValue(input.options.role, input.options.roleCustom)
@@ -36,12 +40,13 @@ export function buildGenerationPrompt(rawInput) {
         ].join(' '),
         userPrompt: [
             `Selected Options JSON:\n${JSON.stringify(selectedOptions, null, 2)}`,
-            `Original Message:\n${input.message}`,
+            `Original Message:\n${originalMessage}`,
             input.notes
                 ? `Writer Intent Notes (internal guidance, not to be answered literally):\n${input.notes}`
                 : 'Writer Intent Notes: None',
             'Critical perspective rules:',
             '- The reply is sent to the person who wrote the Original Message.',
+            '- If Original Message is missing, use Writer Intent Notes as primary context.',
             '- Write as the writer/user, not as AI assistant.',
             '- Convert notes like "help me ask for leave" into a direct recipient-facing reply.',
             '- Never output meta lines like "I can help you..." / "我会帮你...".',

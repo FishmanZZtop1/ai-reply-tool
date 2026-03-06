@@ -55,7 +55,7 @@ const ContentPanel = memo(function ContentPanel({
 
     const currentResult = results[currentPage]
 
-    const canGenerate = Boolean(config.message?.trim()) && !isLoading
+    const canGenerate = Boolean(config.message?.trim() || config.notes?.trim()) && !isLoading
     const historyTitle = String(config.message || '').trim() || "Message You're Replying To"
 
     return (

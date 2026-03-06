@@ -57,11 +57,14 @@ export function normalizeGenerationInput(input) {
 }
 
 export function validateGenerationInput(normalizedInput) {
-    if (!normalizedInput.message || normalizedInput.message.length < GENERATION_LIMITS.messageMin) {
-        return { ok: false, reason: 'Message is required.' }
+    const hasMessage = Boolean(normalizedInput.message?.trim())
+    const hasNotes = Boolean(normalizedInput.notes?.trim())
+
+    if (!hasMessage && !hasNotes) {
+        return { ok: false, reason: 'Message or additional notes is required.' }
     }
 
-    if (normalizedInput.message.length > GENERATION_LIMITS.messageMax) {
+    if (hasMessage && normalizedInput.message.length > GENERATION_LIMITS.messageMax) {
         return { ok: false, reason: `Message exceeds ${GENERATION_LIMITS.messageMax} characters.` }
     }
 

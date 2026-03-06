@@ -108,6 +108,10 @@ function mapLanguageLabel(languageCode: string) {
 function buildPrompt(input: ReturnType<typeof normalizeInput>, effectiveLanguage: string) {
   const scene = resolveOption(input.options.scene, input.options.sceneCustom)
   const role = resolveOption(input.options.role, input.options.roleCustom)
+  const hasOriginalMessage = Boolean(input.message)
+  const originalMessage = hasOriginalMessage
+    ? input.message
+    : '[No original message provided. Use Writer Intent Notes as the primary context.]'
 
   const optionPayload = {
     scene,
@@ -118,6 +122,7 @@ function buildPrompt(input: ReturnType<typeof normalizeInput>, effectiveLanguage
     language_requested: input.language,
     language_effective: effectiveLanguage,
     language_policy: 'follow_original_message',
+    message_source: hasOriginalMessage ? 'message' : 'notes_only',
     variations: input.variations,
   }
 
@@ -131,7 +136,7 @@ function buildPrompt(input: ReturnType<typeof normalizeInput>, effectiveLanguage
     '',
     `Selected Options JSON:\n${JSON.stringify(optionPayload, null, 2)}`,
     '',
-    `Original Message:\n${input.message}`,
+    `Original Message:\n${originalMessage}`,
     '',
     `Writer Intent Notes (internal guidance, not to be answered literally):\n${input.notes || 'None'}`,
     '',
@@ -140,6 +145,7 @@ function buildPrompt(input: ReturnType<typeof normalizeInput>, effectiveLanguage
     '- Do not mix multiple languages unless the original message intentionally mixes them.',
     '- The reply text must directly address the recipient of Original Message.',
     '- Additional Notes describe intent/style constraints. Convert them into recipient-facing reply content.',
+    '- If Original Message is missing, treat Additional Notes as the primary intent and generate direct send-ready replies.',
     '- Never output assistant/meta phrases such as "I can help you..." / "I will help you..." / "我会帮你...".',
     '- Keep tone and role alignment precise.',
     '- Respect length preference (Shorter/Longer).',
@@ -421,8 +427,8 @@ Deno.serve(async (request) => {
     const body = await readJsonBody<GenerateRequest>(request)
     const input = normalizeInput(body)
 
-    if (!input.message) {
-      return errorResponse('Message is required.', 400, 'validation_error')
+    if (!input.message && !input.notes) {
+      return errorResponse('Message or additional notes is required.', 400, 'validation_error')
     }
 
     const idempotencyKey = input.idempotencyKey || crypto.randomUUID()
@@ -498,7 +504,9 @@ Deno.serve(async (request) => {
     }
 
     const messageHash = await sha256(input.message)
-    const effectiveLanguage = inferLanguageFromMessage(input.message)
+    const effectiveLanguage = input.message
+      ? inferLanguageFromMessage(input.message)
+      : inferLanguageFromMessage(input.notes)
 
     const rateKey = `${user.id}:${getClientIp(request)}`
     const { data: allowed, error: rateLimitError } = await admin.rpc('enforce_rate_limit', {

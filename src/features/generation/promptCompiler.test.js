@@ -13,17 +13,29 @@ describe('generation schema', () => {
         expect(normalized.variations).toBe(5)
     })
 
-    it('rejects empty message', () => {
+    it('rejects when both message and notes are empty', () => {
         const normalized = normalizeGenerationInput({
             message: '   ',
+            notes: '   ',
             options: {},
             variations: 1,
         })
 
         expect(validateGenerationInput(normalized)).toEqual({
             ok: false,
-            reason: 'Message is required.',
+            reason: 'Message or additional notes is required.',
         })
+    })
+
+    it('accepts notes-only generation', () => {
+        const normalized = normalizeGenerationInput({
+            message: '   ',
+            notes: 'Help me decline politely.',
+            options: {},
+            variations: 1,
+        })
+
+        expect(validateGenerationInput(normalized)).toEqual({ ok: true })
     })
 })
 
