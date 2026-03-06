@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ApiError, apiGet, apiPost } from '../lib/apiClient'
 import { buildGenerationPrompt } from '../features/generation/promptCompiler'
 import { validateGenerationInput } from '../features/generation/schema'
@@ -7,6 +7,8 @@ const GENERATION_TIMEOUT_MS = 25000
 const STATUS_POLL_INTERVAL_MS = 1800
 const STATUS_POLL_ATTEMPTS = 16
 const MAX_REGENERATE_ATTEMPTS = 1
+const HISTORY_STORAGE_KEY = 'ai_reply_history_entries_v1'
+const HISTORY_LIMIT = 50
 
 function createIdempotencyKey() {
     const timestamp = Date.now().toString(36)
@@ -23,6 +25,98 @@ function sleep(ms) {
     return new Promise((resolve) => {
         setTimeout(resolve, ms)
     })
+}
+
+function normalizeReplyItem(reply, fallbackIdPrefix, index) {
+    if (reply && typeof reply === 'object') {
+        const text = String(reply.text || '').trim()
+        if (!text) {
+            return null
+        }
+
+        return {
+            id: String(reply.id || `${fallbackIdPrefix}-${index}`),
+            text,
+        }
+    }
+
+    const text = String(reply || '').trim()
+    if (!text) {
+        return null
+    }
+
+    return {
+        id: `${fallbackIdPrefix}-${index}`,
+        text,
+    }
+}
+
+function normalizeHistoryEntries(rawEntries) {
+    if (!Array.isArray(rawEntries)) {
+        return []
+    }
+
+    return rawEntries
+        .map((entry) => {
+            if (!entry || typeof entry !== 'object') {
+                return null
+            }
+
+            const requestId = String(entry.requestId || '').trim()
+            if (!requestId) {
+                return null
+            }
+
+            const title = String(entry.title || '').trim() || "Message You're Replying To"
+            const fallbackIdPrefix = requestId
+            const replies = Array.isArray(entry.replies)
+                ? entry.replies
+                    .map((reply, index) => normalizeReplyItem(reply, fallbackIdPrefix, index))
+                    .filter(Boolean)
+                : []
+
+            if (replies.length === 0) {
+                return null
+            }
+
+            return {
+                requestId,
+                title,
+                replies,
+                createdAt: String(entry.createdAt || new Date().toISOString()),
+            }
+        })
+        .filter(Boolean)
+        .slice(0, HISTORY_LIMIT)
+}
+
+function loadHistoryEntries() {
+    if (typeof window === 'undefined') {
+        return []
+    }
+
+    try {
+        const raw = window.localStorage.getItem(HISTORY_STORAGE_KEY)
+        if (!raw) {
+            return []
+        }
+
+        return normalizeHistoryEntries(JSON.parse(raw))
+    } catch {
+        return []
+    }
+}
+
+function persistHistoryEntries(entries) {
+    if (typeof window === 'undefined') {
+        return
+    }
+
+    try {
+        window.localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(entries.slice(0, HISTORY_LIMIT)))
+    } catch {
+        // Ignore storage errors in restricted contexts.
+    }
 }
 
 function mapReplies(payload) {
@@ -77,9 +171,13 @@ async function requestGeneration(payload, idempotencyKey) {
 
 export function useGenerator({ onSuccess }) {
     const [results, setResults] = useState([])
-    const [historyEntries, setHistoryEntries] = useState([])
+    const [historyEntries, setHistoryEntries] = useState(() => loadHistoryEntries())
     const [isLoading, setIsLoading] = useState(false)
     const [error, setError] = useState('')
+
+    useEffect(() => {
+        persistHistoryEntries(historyEntries)
+    }, [historyEntries])
 
     const clearResults = useCallback(() => {
         setResults([])
@@ -90,25 +188,23 @@ export function useGenerator({ onSuccess }) {
         const mapped = mapReplies(payload)
         setResults(mapped)
 
-        const requestId = payload?.request_id || ''
+        const requestId = String(payload?.request_id || createIdempotencyKey())
         const title = String(messageTitle || '').trim() || "Message You're Replying To"
 
-        if (requestId) {
-            setHistoryEntries((previous) => {
-                const alreadyExists = previous.some((entry) => entry.requestId === requestId)
-                if (alreadyExists) {
-                    return previous
-                }
+        setHistoryEntries((previous) => {
+            const alreadyExists = previous.some((entry) => entry.requestId === requestId)
+            if (alreadyExists) {
+                return previous
+            }
 
-                const nextEntry = {
-                    requestId,
-                    title,
-                    replies: mapped,
-                    createdAt: new Date().toISOString(),
-                }
-                return [nextEntry, ...previous].slice(0, 30)
-            })
-        }
+            const nextEntry = {
+                requestId,
+                title,
+                replies: mapped,
+                createdAt: new Date().toISOString(),
+            }
+            return [nextEntry, ...previous].slice(0, HISTORY_LIMIT)
+        })
 
         if (onSuccess) {
             await onSuccess(payload)

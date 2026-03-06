@@ -23,6 +23,9 @@ function mapAuthErrorMessage(message) {
     if (normalized.includes('redirect_to is not allowed')) {
         return '登录回调地址未配置，请联系管理员检查 Supabase URL 白名单。'
     }
+    if (normalized.includes('row-level security policy for table "profiles"')) {
+        return '个人资料保存失败（权限策略未放行）。我已改为安全更新流程，请刷新后重试；若仍失败请执行最新数据库迁移。'
+    }
     if (!message) {
         return '登录失败，请稍后重试。'
     }
@@ -299,27 +302,49 @@ export function useAuth() {
             }
         }
 
-        const { data, error: upsertError } = await supabase
+        const profilePayload = {
+            display_name: nextDisplayName || null,
+            avatar_url: nextAvatarUrl || null,
+        }
+
+        const { data: updatedProfile, error: updateError } = await supabase
             .from('profiles')
-            .upsert({
-                id: user.id,
-                display_name: nextDisplayName || null,
-                avatar_url: nextAvatarUrl || null,
-            }, { onConflict: 'id' })
+            .update(profilePayload)
+            .eq('id', user.id)
             .select('id, display_name, avatar_url, referral_code, created_at')
             .maybeSingle()
 
-        if (upsertError) {
-            const mappedError = mapAuthErrorMessage(upsertError.message)
+        if (updateError) {
+            const mappedError = mapAuthErrorMessage(updateError.message)
             setError(mappedError)
             return { ok: false, error: mappedError }
         }
 
-        if (data) {
-            setProfile(data)
+        if (updatedProfile) {
+            setProfile(updatedProfile)
+            return { ok: true, profile: updatedProfile }
         }
 
-        return { ok: true, profile: data ?? null }
+        const { data: insertedProfile, error: insertError } = await supabase
+            .from('profiles')
+            .insert({
+                id: user.id,
+                ...profilePayload,
+            })
+            .select('id, display_name, avatar_url, referral_code, created_at')
+            .maybeSingle()
+
+        if (insertError) {
+            const mappedError = mapAuthErrorMessage(insertError.message)
+            setError(mappedError)
+            return { ok: false, error: mappedError }
+        }
+
+        if (insertedProfile) {
+            setProfile(insertedProfile)
+        }
+
+        return { ok: true, profile: insertedProfile ?? null }
     }, [user?.id])
 
     const signOut = useCallback(async () => {
