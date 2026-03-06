@@ -302,9 +302,9 @@ const ProductSections = memo(function ProductSections() {
             >
                 <div className="grid grid-cols-3 gap-8 text-center">
                     {[
-                        { number: '10M+', label: 'Replies Generated' },
-                        { number: '98%', label: 'Satisfaction Rate' },
-                        { number: '150+', label: 'Languages Supported' }
+                        { number: '< 1s', label: 'Generation Speed (生成速度)' },
+                        { number: '1-Click', label: 'Effortless Replies' },
+                        { number: '100%', label: 'Context Aware (全上下文感知)' }
                     ].map((stat, i) => (
                         <motion.div
                             key={i}

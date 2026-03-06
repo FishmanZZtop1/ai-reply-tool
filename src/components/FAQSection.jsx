@@ -15,7 +15,7 @@ const faqs = [
     },
     {
         question: "Is this AI Reply Tool Free?",
-        answer: "Yes! We offer a free version that allows you to generate high-quality responses daily. For power users who need unlimited replies, we offer affordable premium plans. This tool is designed to be the fastest free AI text reply generator on the market."
+        answer: "Yes! We offer a one-time bonus of massive free credits on your very first login to generate high-quality responses. Share the tool with your friends to unlock even more free credits! For power users who need unlimited replies, we offer affordable premium plans. This tool is designed to be the fastest free AI text reply generator on the market."
     },
     {
         question: "Is my data private?",
