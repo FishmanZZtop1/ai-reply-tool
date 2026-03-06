@@ -2,6 +2,7 @@ import { corsHeaders } from '../_shared/cors.ts'
 import { requireUser } from '../_shared/auth.ts'
 import { createAdminClient } from '../_shared/supabase.ts'
 import { errorResponse, getClientIp, jsonResponse, readJsonBody } from '../_shared/http.ts'
+import { inferLanguageFromMessage } from '../_shared/language.ts'
 
 type GenerateRequest = {
   message?: string
@@ -77,43 +78,6 @@ function resolveOption(primary: string, custom: string) {
   return primary || custom || 'Not specified'
 }
 
-function inferLanguageFromText(text: string) {
-  if (/[\u3040-\u30FF\u31F0-\u31FF]/.test(text)) {
-    return 'ja'
-  }
-
-  if (/[\uAC00-\uD7AF]/.test(text)) {
-    return 'ko'
-  }
-
-  if (/[\u4E00-\u9FFF]/.test(text)) {
-    return 'zh'
-  }
-
-  if (/[\u0400-\u04FF]/.test(text)) {
-    return 'ru'
-  }
-
-  if (/[\u0600-\u06FF]/.test(text)) {
-    return 'ar'
-  }
-
-  if (/[\u0900-\u097F]/.test(text)) {
-    return 'hi'
-  }
-
-  return 'en'
-}
-
-function resolveEffectiveLanguage(requestedLanguage: string, message: string, notes: string) {
-  const normalizedRequested = requestedLanguage.toLowerCase()
-  if (!normalizedRequested || normalizedRequested === 'auto') {
-    return inferLanguageFromText(`${message}\n${notes}`)
-  }
-
-  return normalizedRequested
-}
-
 function mapLanguageLabel(languageCode: string) {
   switch (languageCode) {
     case 'zh':
@@ -153,6 +117,7 @@ function buildPrompt(input: ReturnType<typeof normalizeInput>, effectiveLanguage
     emoji: input.options.emoji,
     language_requested: input.language,
     language_effective: effectiveLanguage,
+    language_policy: 'follow_original_message',
     variations: input.variations,
   }
 
@@ -533,7 +498,7 @@ Deno.serve(async (request) => {
     }
 
     const messageHash = await sha256(input.message)
-    const effectiveLanguage = resolveEffectiveLanguage(input.language, input.message, input.notes)
+    const effectiveLanguage = inferLanguageFromMessage(input.message)
 
     const rateKey = `${user.id}:${getClientIp(request)}`
     const { data: allowed, error: rateLimitError } = await admin.rpc('enforce_rate_limit', {

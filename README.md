@@ -1,43 +1,47 @@
 # AI Reply
 
-AI Reply is a Vite + React frontend with Supabase Edge Functions for auth, credit wallet, AI generation, Lemon Squeezy checkout, and Resend marketing automation.
+AI Reply is a Vite + React web app with Supabase Edge Functions.
+It supports auth, credit wallet, AI reply generation (Gemini), Creem checkout/webhook, and basic marketing automation.
 
 ## Stack
 
 - Frontend: React 19 + Vite 6 + Tailwind 4 + Framer Motion
-- Auth/Data/Functions: Supabase (Postgres + RLS + Edge Functions)
-- AI: Google Gemini API (server-side only)
-- Payments: Lemon Squeezy (checkout + webhook)
-- Marketing: Resend (welcome + 24h/72h reminders)
-- Policy/Consent: Termly links + cookie blocker script
-- Hosting: GitHub Pages (frontend) + Supabase (backend)
+- Backend: Supabase (Postgres + RLS + Edge Functions + Auth)
+- AI: Gemini API (server-side only)
+- Payments: Creem (hosted checkout + webhook)
+- Marketing: Resend (welcome + reminder emails)
+- Policy/Consent: Termly policy pages + cookie consent script
+- Hosting: Cloudflare + GitHub
 
 ## Environment Variables
 
-Copy `.env.example` to `.env` and set at least:
+Copy `.env.example` to `.env`.
+
+Required frontend env:
 
 - `VITE_SUPABASE_URL`
 - `VITE_SUPABASE_ANON_KEY`
-- `VITE_APP_URL`
-- `VITE_TERMLY_PRIVACY_URL`
-- `VITE_TERMLY_TERMS_URL`
-- `VITE_TERMLY_WEBSITE_UUID`
+- `VITE_APP_URL` (default `https://aireplytool.com`)
 
-Set Supabase function secrets:
+Required Supabase secrets:
 
 - `SUPABASE_URL`
 - `SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY`
 - `GEMINI_API_KEY`
 - `GEMINI_MODEL` (optional, default `gemini-2.0-flash`)
-- `LEMON_API_KEY`
-- `LEMON_STORE_ID`
-- `LEMON_WEBHOOK_SECRET`
-- `RESEND_API_KEY`
-- `RESEND_AUDIENCE_ID`
-- `RESEND_FROM_EMAIL`
-- `APP_BASE_URL`
-- `MARKETING_CRON_SECRET`
+- `GEMINI_TIMEOUT_MS` (optional, default `25000`)
+- `CREEM_API_KEY`
+- `CREEM_WEBHOOK_SECRET`
+- `CREEM_PRODUCT_ID_CREDIT_PACK_STARTER`
+- `CREEM_PRODUCT_ID_MONTHLY_PRO_AUTO`
+- `CREEM_PRODUCT_ID_MONTHLY_PRO_ONCE`
+- `CREEM_PRODUCT_ID_LIFETIME_PRO`
+- `RESEND_API_KEY` (optional but required for email send)
+- `RESEND_AUDIENCE_ID` (optional)
+- `RESEND_FROM_EMAIL` (optional, default `AI Reply <hello@aireplytool.com>`)
+- `APP_BASE_URL` (default `https://aireplytool.com`)
+- `MARKETING_CRON_SECRET` (optional if using scheduled reminders)
 
 ## Local Development
 
@@ -46,70 +50,66 @@ npm install
 npm run dev
 ```
 
-## Lint + Build
+## Validation
 
 ```bash
 npm run lint
+npm run test -- --run
 npm run build
 ```
 
-## Supabase
+## Supabase Deploy
 
-### 1) Apply database migration
+### 1) Apply migrations
 
 ```bash
 supabase db push
 ```
 
-### 2) Deploy edge functions
+### 2) Deploy functions
 
 ```bash
 supabase functions deploy generate-reply
+supabase functions deploy generation-status
 supabase functions deploy create-checkout
-supabase functions deploy lemon-webhook --no-verify-jwt
+supabase functions deploy creem-webhook --no-verify-jwt
 supabase functions deploy wallet
 supabase functions deploy ledger
 supabase functions deploy config-options --no-verify-jwt
 supabase functions deploy marketing-dispatch
+supabase functions deploy upload-avatar
+supabase functions deploy delete-account
+supabase functions deploy redeem-invite-code
 ```
 
-### 3) Set function secrets
+### 3) Set secrets
 
 ```bash
 supabase secrets set SUPABASE_URL=... SUPABASE_ANON_KEY=... SUPABASE_SERVICE_ROLE_KEY=...
-supabase secrets set GEMINI_API_KEY=... LEMON_API_KEY=... LEMON_STORE_ID=... LEMON_WEBHOOK_SECRET=...
-supabase secrets set RESEND_API_KEY=... RESEND_AUDIENCE_ID=... RESEND_FROM_EMAIL=...
+supabase secrets set GEMINI_API_KEY=... GEMINI_MODEL=gemini-2.0-flash GEMINI_TIMEOUT_MS=25000
+supabase secrets set CREEM_API_KEY=... CREEM_WEBHOOK_SECRET=...
+supabase secrets set CREEM_PRODUCT_ID_CREDIT_PACK_STARTER=... CREEM_PRODUCT_ID_MONTHLY_PRO_AUTO=...
+supabase secrets set CREEM_PRODUCT_ID_MONTHLY_PRO_ONCE=... CREEM_PRODUCT_ID_LIFETIME_PRO=...
+supabase secrets set RESEND_API_KEY=... RESEND_AUDIENCE_ID=... RESEND_FROM_EMAIL='AI Reply <hello@aireplytool.com>'
 supabase secrets set APP_BASE_URL=https://aireplytool.com MARKETING_CRON_SECRET=...
 ```
 
-## Lemon Squeezy Setup
+## Creem Production Cutover
 
-1. Replace placeholder `lemon_variant_id` values in `public.plans`.
-2. Configure webhook URL: `https://<project-ref>.supabase.co/functions/v1/lemon-webhook`.
-3. Use signing secret as `LEMON_WEBHOOK_SECRET`.
+See: `docs/creem-production-cutover.md`
 
-## GitHub Pages + Cloudflare
+Important behavior in current code:
 
-1. Push this repo to GitHub (branch `main`).
-2. In GitHub repo settings:
-   - Enable Pages source via `GitHub Actions`.
-   - Add repository secrets:
-     - `VITE_SUPABASE_URL`
-     - `VITE_SUPABASE_ANON_KEY`
-     - `VITE_APP_URL`
-     - `VITE_TERMLY_PRIVACY_URL` (optional)
-     - `VITE_TERMLY_TERMS_URL` (optional)
-     - `VITE_TERMLY_COOKIE_URL` (optional)
-     - `VITE_TERMLY_WEBSITE_UUID` (optional)
-3. Workflow file is pre-configured: `.github/workflows/deploy-pages.yml`.
-4. Custom domain is pre-configured by `public/CNAME` as `aireplytool.com`.
-5. In Cloudflare DNS, create:
-   - `CNAME` record: `@` -> `<github-username>.github.io`
-   - `CNAME` record: `www` -> `<github-username>.github.io`
-   - Set SSL mode to `Full` (or `Full (strict)` after cert is ready).
+- `create-checkout` uses `test-api.creem.io` only when key starts with `creem_test_`
+- otherwise it uses production `api.creem.io`
+- checkout prefill email is currently fixed to `hello@aireplytool.com`
+
+## SEO / Google Indexing
+
+See: `docs/google-indexing-checklist.md`
 
 ## Notes
 
-- Credit charge is fixed at `100` per generation.
-- Message raw text is not persisted to DB; only hashed telemetry is stored.
-- `config-options` is public read; all credit/payment operations are server-side only.
+- Credit charge is fixed at `100` per generation
+- Timed credits are reset daily and are consumed before permanent credits
+- Raw message text is not stored; only minimal metadata/hash is persisted

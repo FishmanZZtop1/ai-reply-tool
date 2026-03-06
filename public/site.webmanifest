@@ -1,6 +1,7 @@
 {
   "short_name": "AI Reply",
   "name": "AI Reply Generator",
+  "lang": "en",
   "icons": [
     {
       "src": "/icon.png",
@@ -14,6 +15,7 @@
     }
   ],
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "theme_color": "#E413A2",
   "background_color": "#ffffff"

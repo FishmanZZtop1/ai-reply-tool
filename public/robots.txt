@@ -1,4 +1,5 @@
 User-agent: *
 Allow: /
+Host: aireplytool.com
 
 Sitemap: https://aireplytool.com/sitemap.xml
