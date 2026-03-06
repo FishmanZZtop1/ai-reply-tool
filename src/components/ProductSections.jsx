@@ -15,39 +15,39 @@ import { springs, staggerItem } from '../motion/config'
 const TESTIMONIALS = [
     {
         avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face',
-        name: 'Alex Chen',
-        role: 'Product Manager',
-        text: "This tool is absolutely insane! Used to spend 30 mins crafting emails, now it's done in seconds. Total game changer for my workflow."
+        name: 'Solo Founders & Indie Hackers',
+        role: '',
+        text: 'Stay engaged with your community on X and Reddit while keeping your focus and mental energy on shipping code.'
     },
     {
         avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop&crop=face',
-        name: 'Sarah Kim',
-        role: 'Freelance Designer',
-        text: "As a freelancer handling tons of client messages daily, this saves me hours every week. The tone matching is spot on!"
+        name: 'Freelancers',
+        role: '',
+        text: "Respond to client emails professionally and promptly, even when you're overwhelmed with heavy project work."
     },
     {
         avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop&crop=face',
-        name: 'Mike Johnson',
-        role: 'Software Engineer',
-        text: "My colleagues think I've become way more professional. Little do they know it's AI Reply doing the heavy lifting 😄"
+        name: 'Global Creators',
+        role: '',
+        text: 'Engage confidently with an international audience without worrying about grammar, slang, or awkward phrasing.'
     },
     {
         avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&h=100&fit=crop&crop=face',
-        name: 'Lisa Wang',
-        role: 'Teacher',
-        text: "Replying to parents just got so much easier. The AI understands context perfectly and keeps the tone warm yet professional."
+        name: 'Community Managers',
+        role: '',
+        text: 'Keep the conversation flowing across all your social channels with zero mental fatigue.'
     },
     {
         avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&h=100&fit=crop&crop=face',
-        name: 'David Lee',
-        role: 'Restaurant Owner',
-        text: "Customer inquiries used to stress me out. Now I handle them in minutes with perfectly crafted responses. Love it!"
+        name: 'Sales Professionals',
+        role: '',
+        text: 'Follow up on cold leads or reply to prospects with context-aware, non-robotic responses.'
     },
     {
         avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop&crop=face',
-        name: 'Emma Zhang',
-        role: 'Healthcare Professional',
-        text: "The empathy in generated responses is remarkable. Patients feel heard, and I save so much time. Brilliant tool!"
+        name: 'Everyday Socializing',
+        role: '',
+        text: "Perfect for those moments when you know what you want to say, but just can't find the right words."
     }
 ]
 
@@ -124,7 +124,9 @@ function TestimonialCard({ testimonial }) {
                 />
                 <div>
                     <div className="font-semibold text-gray-800">{testimonial.name}</div>
-                    <div className="text-xs text-gray-400">{testimonial.role}</div>
+                    {testimonial.role ? (
+                        <div className="text-xs text-gray-400">{testimonial.role}</div>
+                    ) : null}
                 </div>
             </div>
             <p className="text-gray-600 text-sm leading-relaxed italic">
@@ -200,9 +202,21 @@ const ProductSections = memo(function ProductSections() {
                     }}
                 >
                     {[
-                        { icon: '🎯', title: 'Context-Aware', desc: 'AI understands the full context of your conversation' },
-                        { icon: '⚡', title: 'Lightning Fast', desc: 'Generate multiple reply options in seconds' },
-                        { icon: '🎨', title: 'Customizable Tone', desc: 'Match your personal style perfectly' }
+                        {
+                            icon: '🎯',
+                            title: 'Deep Contextual Understanding',
+                            desc: "It doesn't just read the last message. The AI analyzes the entire thread to ensure your reply is perfectly on point.",
+                        },
+                        {
+                            icon: '⚡',
+                            title: 'Lightning Fast Generation',
+                            desc: 'Stop staring at a blinking cursor. Get highly relevant and professional replies generated in milliseconds.',
+                        },
+                        {
+                            icon: '✅',
+                            title: 'Spot-On Appropriateness',
+                            desc: 'No more awkward phrasing. Delivers precise, high-quality responses tailored to the exact situation.',
+                        },
                     ].map((feature, i) => (
                         <motion.div
                             key={i}
