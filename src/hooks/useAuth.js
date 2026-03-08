@@ -8,8 +8,6 @@ function mapProvider(provider) {
             return 'google'
         case 'GitHub':
             return 'github'
-        case 'Apple':
-            return 'apple'
         case 'X':
             return 'x'
         default:
@@ -69,7 +67,6 @@ export function useAuth() {
     const [oauthProviders, setOauthProviders] = useState({
         google: null,
         github: null,
-        apple: null,
         x: null,
     })
 
@@ -147,7 +144,6 @@ export function useAuth() {
         async function bootstrapOauthProviders() {
             const settingsGoogle = await isOAuthProviderEnabled('google')
             const settingsGithub = await isOAuthProviderEnabled('github')
-            const settingsApple = await isOAuthProviderEnabled('apple')
             const settingsX = await isOAuthProviderEnabled('x')
             if (!mounted) {
                 return
@@ -155,7 +151,6 @@ export function useAuth() {
             setOauthProviders({
                 google: settingsGoogle,
                 github: settingsGithub,
-                apple: settingsApple,
                 x: settingsX,
             })
         }
