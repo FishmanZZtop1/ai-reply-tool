@@ -60,7 +60,7 @@ Deno.serve(async (request) => {
   }
 
   try {
-    const expectedSecret = Deno.env.get('SUPABASE_WEBHOOK_SECRET') || ''
+    const expectedSecret = Deno.env.get('WEBHOOK_SHARED_SECRET') || ''
     const providedSecret = getWebhookSecret(request)
 
     if (!expectedSecret || providedSecret !== expectedSecret) {

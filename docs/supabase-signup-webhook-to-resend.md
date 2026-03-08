@@ -9,7 +9,7 @@
   `https://xlkibhktnsorttppzdby.supabase.co/functions/v1/supabase-signup-webhook`
 
 函数逻辑：
-1. 校验 `x-supabase-webhook-secret` 是否等于 `SUPABASE_WEBHOOK_SECRET`
+1. 校验 `x-supabase-webhook-secret` 是否等于 `WEBHOOK_SHARED_SECRET`
 2. 读取 `record.email`
 3. 调用 Resend Audience API 写入联系人
 4. 可选：若 payload 带 `record.id`，会同时 upsert 到 `marketing_contacts` 并记录 `marketing_events`
@@ -19,12 +19,12 @@
 
 ```bash
 supabase secrets set \
-  SUPABASE_WEBHOOK_SECRET='你的随机长密钥' \
+  WEBHOOK_SHARED_SECRET='你的随机长密钥' \
   RESEND_API_KEY='你的resend key' \
   RESEND_AUDIENCE_ID='你的audience id'
 ```
 
-> `SUPABASE_WEBHOOK_SECRET` 建议 32+ 位随机字符串。
+> `WEBHOOK_SHARED_SECRET` 建议 32+ 位随机字符串。
 
 ## 部署函数
 ```bash
@@ -39,7 +39,7 @@ supabase functions deploy supabase-signup-webhook --no-verify-jwt
 - Method: `POST`
 - URL: `https://xlkibhktnsorttppzdby.supabase.co/functions/v1/supabase-signup-webhook`
 - Headers:
-  - `x-supabase-webhook-secret: <与你 SUPABASE_WEBHOOK_SECRET 相同>`
+  - `x-supabase-webhook-secret: <与你 WEBHOOK_SHARED_SECRET 相同>`
 
 ## 快速测试
 ```bash
