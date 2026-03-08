@@ -8,6 +8,8 @@ function mapProvider(provider) {
             return 'google'
         case 'GitHub':
             return 'github'
+        case 'Apple':
+            return 'apple'
         case 'X':
             return 'x'
         default:
@@ -67,6 +69,7 @@ export function useAuth() {
     const [oauthProviders, setOauthProviders] = useState({
         google: null,
         github: null,
+        apple: null,
         x: null,
     })
 
@@ -144,14 +147,16 @@ export function useAuth() {
         async function bootstrapOauthProviders() {
             const settingsGoogle = await isOAuthProviderEnabled('google')
             const settingsGithub = await isOAuthProviderEnabled('github')
+            const settingsApple = await isOAuthProviderEnabled('apple')
             const settingsX = await isOAuthProviderEnabled('x')
             if (!mounted) {
                 return
             }
             setOauthProviders({
-                google: settingsGoogle === true,
-                github: settingsGithub === true,
-                x: settingsX === true,
+                google: settingsGoogle,
+                github: settingsGithub,
+                apple: settingsApple,
+                x: settingsX,
             })
         }
 
@@ -177,20 +182,18 @@ export function useAuth() {
         setError('')
 
         let providerEnabled = oauthProviders[provider]
-        if (providerEnabled !== true) {
+        if (providerEnabled !== true && providerEnabled !== false) {
             providerEnabled = await isOAuthProviderEnabled(provider)
             if (providerEnabled !== null) {
                 setOauthProviders((previous) => ({
                     ...previous,
-                    [provider]: providerEnabled === true,
+                    [provider]: providerEnabled,
                 }))
             }
         }
 
-        if (providerEnabled !== true) {
-            const disabledMessage = providerEnabled === false
-                ? `${providerName} 登录暂未启用，请先使用邮箱登录。`
-                : `${providerName} 登录暂时不可用，请先使用邮箱登录。`
+        if (providerEnabled === false) {
+            const disabledMessage = `${providerName} 登录暂未启用，请先使用邮箱登录。`
             setError(disabledMessage)
             return { ok: false, error: disabledMessage }
         }

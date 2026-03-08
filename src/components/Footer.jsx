@@ -50,6 +50,12 @@ export default function Footer() {
                         >
                             Contact Team: hello@aireplytool.com
                         </a>
+                        <a
+                            href="/use-cases/how-to-manage-x-replies-with-ai"
+                            className="text-sm text-gray-500 hover:text-pink-600 transition-colors"
+                        >
+                            Use Case: X Replies with AI
+                        </a>
                     </nav>
                 </div>
             </div>

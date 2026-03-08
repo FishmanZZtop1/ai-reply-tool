@@ -44,6 +44,15 @@ const LoginModal = memo(function LoginModal({
             ),
         },
         {
+            name: 'Apple',
+            key: 'apple',
+            icon: (
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M16.37 12.02c.02 2.12 1.86 2.83 1.88 2.84-.02.05-.29.98-.95 1.94-.57.83-1.16 1.66-2.09 1.67-.91.02-1.2-.54-2.25-.54-1.05 0-1.37.53-2.23.56-.89.03-1.56-.9-2.13-1.72-1.17-1.68-2.06-4.74-.86-6.83.6-1.03 1.67-1.68 2.83-1.7.88-.02 1.72.59 2.25.59.53 0 1.54-.73 2.6-.62.44.02 1.68.18 2.48 1.35-.06.04-1.48.86-1.47 2.46ZM14.9 6.29c.48-.58.81-1.39.72-2.19-.69.03-1.53.46-2.03 1.04-.45.52-.84 1.35-.73 2.14.77.06 1.56-.39 2.04-.99Z" />
+                </svg>
+            ),
+        },
+        {
             name: 'X',
             key: 'x',
             icon: (
@@ -194,7 +203,7 @@ const LoginModal = memo(function LoginModal({
                             }}
                         >
                             {socialButtons.map((button) => {
-                                const isEnabled = oauthProviders?.[button.key] === true
+                                const isEnabled = oauthProviders?.[button.key] !== false
                                 return (
                                 <motion.button
                                     key={button.name}

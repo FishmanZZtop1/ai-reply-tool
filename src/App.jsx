@@ -6,6 +6,7 @@ import Footer from './components/Footer'
 import CookieConsentBanner from './components/CookieConsentBanner'
 import ErrorBoundary from './components/ErrorBoundary'
 import FAQSection from './components/FAQSection'
+import HowToManageXRepliesWithAI from './components/use-cases/HowToManageXRepliesWithAI'
 import SimpleBackground from './components/SimpleBackground'
 import { CustomCursor } from './motion/Cursor'
 import { springs } from './motion/config'
@@ -27,6 +28,83 @@ const PENDING_INVITE_STORAGE_KEY = 'ai_reply_pending_invite_code'
 const SIGNUP_NOTICE_STORAGE_KEY_PREFIX = 'ai_reply_signup_notice_seen_'
 const PENDING_GENERATION_STORAGE_KEY = 'ai_reply_pending_generation_draft_v1'
 const PENDING_GENERATION_TTL_MS = 1000 * 60 * 60
+const USE_CASE_X_PATH = '/use-cases/how-to-manage-x-replies-with-ai'
+
+const ROOT_METADATA = {
+    title: 'AI Reply Tool | Context-Aware Responses for X, Reddit & Email',
+    description: 'Stop using robotic templates. Our AI Reply Tool analyzes full conversation threads to generate instant, human-like responses in milliseconds. Perfect for founders, creators, and customer support.',
+    keywords: 'AI reply tool, AI text generator, context-aware AI, social media auto reply, customer support AI',
+    ogTitle: 'AI Reply Tool - Never Sound Like a Bot Again',
+    ogDescription: 'Generate perfectly contextualized replies for X, Reddit, and emails in < 1s.',
+    url: 'https://aireplytool.com/',
+    image: 'https://aireplytool.com/icon.png',
+}
+
+const USE_CASE_X_METADATA = {
+    title: 'How to Manage X (Twitter) Replies with AI | AI Reply Tool',
+    description: 'Learn how solo founders and creators use context-aware AI reply tools to scale their social media engagement without losing their authentic voice.',
+    keywords: 'how to reply on X with AI, AI reply tool, context-aware AI response, social media engagement AI',
+    ogTitle: 'How to Manage X (Twitter) Replies with AI | AI Reply Tool',
+    ogDescription: 'Learn how founders and creators use context-aware AI replies to scale engagement on X without sounding robotic.',
+    url: `https://aireplytool.com${USE_CASE_X_PATH}`,
+    image: 'https://aireplytool.com/icon.png',
+}
+
+function normalizePathname(pathname) {
+    const normalized = String(pathname || '/').replace(/\/+$/, '')
+    return normalized || '/'
+}
+
+function upsertMetaTag(attribute, key, content) {
+    if (typeof document === 'undefined') {
+        return
+    }
+
+    let element = document.head.querySelector(`meta[${attribute}="${key}"]`)
+    if (!element) {
+        element = document.createElement('meta')
+        element.setAttribute(attribute, key)
+        document.head.appendChild(element)
+    }
+
+    element.setAttribute('content', content)
+}
+
+function upsertCanonical(url) {
+    if (typeof document === 'undefined') {
+        return
+    }
+
+    let canonical = document.head.querySelector('link[rel="canonical"]')
+    if (!canonical) {
+        canonical = document.createElement('link')
+        canonical.setAttribute('rel', 'canonical')
+        document.head.appendChild(canonical)
+    }
+
+    canonical.setAttribute('href', url)
+}
+
+function applySeoMetadata(metadata) {
+    if (typeof document === 'undefined') {
+        return
+    }
+
+    document.title = metadata.title
+    upsertCanonical(metadata.url)
+    upsertMetaTag('name', 'description', metadata.description)
+    upsertMetaTag('name', 'keywords', metadata.keywords)
+    upsertMetaTag('property', 'og:type', 'website')
+    upsertMetaTag('property', 'og:site_name', 'AI Reply Tool')
+    upsertMetaTag('property', 'og:title', metadata.ogTitle)
+    upsertMetaTag('property', 'og:description', metadata.ogDescription)
+    upsertMetaTag('property', 'og:url', metadata.url)
+    upsertMetaTag('property', 'og:image', metadata.image)
+    upsertMetaTag('name', 'twitter:card', 'summary_large_image')
+    upsertMetaTag('name', 'twitter:title', metadata.ogTitle)
+    upsertMetaTag('name', 'twitter:description', metadata.ogDescription)
+    upsertMetaTag('name', 'twitter:image', metadata.image)
+}
 
 function sanitizeInviteCode(rawValue) {
     if (!rawValue) return ''
@@ -123,6 +201,7 @@ function clearPendingGenerationConfig() {
 }
 
 function App() {
+    const [pathname, setPathname] = useState(() => normalizePathname(window.location.pathname))
     const [showPricingModal, setShowPricingModal] = useState(false)
     const [showLoginModal, setShowLoginModal] = useState(false)
     const [showCreditsModal, setShowCreditsModal] = useState(false)
@@ -163,6 +242,23 @@ function App() {
             setShowLoginModal(false)
         }
     }, [auth.isAuthenticated])
+
+    useEffect(() => {
+        const syncPath = () => {
+            setPathname(normalizePathname(window.location.pathname))
+        }
+
+        window.addEventListener('popstate', syncPath)
+        return () => {
+            window.removeEventListener('popstate', syncPath)
+        }
+    }, [])
+
+    const isUseCaseXPage = pathname === USE_CASE_X_PATH
+
+    useEffect(() => {
+        applySeoMetadata(isUseCaseXPage ? USE_CASE_X_METADATA : ROOT_METADATA)
+    }, [isUseCaseXPage])
 
     useEffect(() => {
         if (!showCreditsModal || !auth.isAuthenticated) {
@@ -518,85 +614,91 @@ function App() {
 
                     <div className="min-h-screen relative">
                         <main className="pt-28 px-4 sm:px-6 lg:px-8 max-w-[1100px] mx-auto relative z-10">
-                            {!isSupabaseConfigured && (
-                                <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 text-amber-800 px-4 py-3 text-sm">
-                                    Supabase is not configured. Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`.
-                                </div>
+                            {isUseCaseXPage ? (
+                                <HowToManageXRepliesWithAI />
+                            ) : (
+                                <>
+                                    {!isSupabaseConfigured && (
+                                        <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 text-amber-800 px-4 py-3 text-sm">
+                                            Supabase is not configured. Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`.
+                                        </div>
+                                    )}
+
+                                    {!!globalError && (
+                                        <div role="alert" className="mb-6 rounded-xl border border-red-200 bg-red-50 text-red-700 px-4 py-3 text-sm">
+                                            {globalError}
+                                        </div>
+                                    )}
+
+                                    {!!noticeMessage && (
+                                        <div className="mb-6 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-700 px-4 py-3 text-sm">
+                                            {noticeMessage}
+                                        </div>
+                                    )}
+
+                                    <motion.div
+                                        className="text-center mb-12"
+                                        initial={{ opacity: 0, y: 30 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        transition={{ type: 'spring', ...springs.smooth }}
+                                    >
+                                        <motion.span
+                                            className="label-aurora mb-4 inline-block"
+                                            initial={{ opacity: 0, y: 10 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            transition={{ delay: 0.1, type: 'spring', ...springs.snappy }}
+                                        >
+                                            AI Reply
+                                        </motion.span>
+                                        <motion.h1
+                                            className="heading-aurora text-5xl sm:text-6xl lg:text-7xl font-bold mb-5"
+                                            initial={{ opacity: 0, y: 20 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            transition={{ delay: 0.15, type: 'spring', ...springs.smooth }}
+                                        >
+                                            The Context-Aware <span className="text-pink-500">AI Reply Tool</span>
+                                        </motion.h1>
+                                        <motion.p
+                                            className="mt-4 text-lg md:text-xl text-gray-600 max-w-2xl mx-auto"
+                                            initial={{ opacity: 0, y: 10 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            transition={{ delay: 0.2, type: 'spring', ...springs.smooth }}
+                                        >
+                                            Don&apos;t just reply. Engage. Our AI analyzes the entire conversation thread to generate spot-on, human-like responses for X, Reddit, and your inbox in milliseconds.
+                                        </motion.p>
+                                    </motion.div>
+
+                                    <motion.div
+                                        initial={{ opacity: 0, y: 40 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        transition={{ delay: 0.25, type: 'spring', ...springs.smooth }}
+                                    >
+                                        <Generator
+                                            onGenerate={handleGenerate}
+                                            results={generator.results}
+                                            isLoading={generator.isLoading}
+                                            optionCatalog={configOptions.catalog}
+                                            errorMessage={generator.error}
+                                            historyEntries={generator.historyEntries}
+                                        />
+                                    </motion.div>
+
+                                    <Suspense fallback={<div className="h-96 flex items-center justify-center"><div className="w-8 h-8 rounded-full border-2 border-pink-500 border-t-transparent animate-spin"></div></div>}>
+                                        <ProductSections />
+                                    </Suspense>
+
+                                    <section className="mt-32 max-w-4xl mx-auto text-gray-700 space-y-12 px-4">
+                                        <div className="text-center mb-16">
+                                            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-6">Why Use Our AI Reply Generator?</h2>
+                                            <p className="text-lg leading-relaxed text-gray-500 max-w-2xl mx-auto">
+                                                Communication is hard. Whether you are facing a flooded inbox or a tricky text message, finding the right words takes time and mental energy. Our AI Reply Generator uses advanced language models to understand the context of your incoming message and craft a response that sounds exactly like you, only better.
+                                            </p>
+                                        </div>
+                                    </section>
+
+                                    <FAQSection />
+                                </>
                             )}
-
-                            {!!globalError && (
-                                <div role="alert" className="mb-6 rounded-xl border border-red-200 bg-red-50 text-red-700 px-4 py-3 text-sm">
-                                    {globalError}
-                                </div>
-                            )}
-
-                            {!!noticeMessage && (
-                                <div className="mb-6 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-700 px-4 py-3 text-sm">
-                                    {noticeMessage}
-                                </div>
-                            )}
-
-                            <motion.div
-                                className="text-center mb-12"
-                                initial={{ opacity: 0, y: 30 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ type: 'spring', ...springs.smooth }}
-                            >
-                                <motion.span
-                                    className="label-aurora mb-4 inline-block"
-                                    initial={{ opacity: 0, y: 10 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    transition={{ delay: 0.1, type: 'spring', ...springs.snappy }}
-                                >
-                                    AI Reply
-                                </motion.span>
-                                <motion.h1
-                                    className="heading-aurora text-5xl sm:text-6xl lg:text-7xl font-bold mb-5"
-                                    initial={{ opacity: 0, y: 20 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    transition={{ delay: 0.15, type: 'spring', ...springs.smooth }}
-                                >
-                                    The Best Free AI Reply Generator
-                                </motion.h1>
-                                <motion.p
-                                    className="text-gray-500 text-lg max-w-xl mx-auto"
-                                    initial={{ opacity: 0, y: 10 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    transition={{ delay: 0.2, type: 'spring', ...springs.smooth }}
-                                >
-                                    Paste your message, choose a tone, and let AI write the perfect response for you. From awkward emails to Tinder matches, we've got you covered.
-                                </motion.p>
-                            </motion.div>
-
-                            <motion.div
-                                initial={{ opacity: 0, y: 40 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: 0.25, type: 'spring', ...springs.smooth }}
-                            >
-                                <Generator
-                                    onGenerate={handleGenerate}
-                                    results={generator.results}
-                                    isLoading={generator.isLoading}
-                                    optionCatalog={configOptions.catalog}
-                                    errorMessage={generator.error}
-                                    historyEntries={generator.historyEntries}
-                                />
-                            </motion.div>
-
-                            <Suspense fallback={<div className="h-96 flex items-center justify-center"><div className="w-8 h-8 rounded-full border-2 border-pink-500 border-t-transparent animate-spin"></div></div>}>
-                                <ProductSections />
-                            </Suspense>
-
-                            <section className="mt-32 max-w-4xl mx-auto text-gray-700 space-y-12 px-4">
-                                <div className="text-center mb-16">
-                                    <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-6">Why Use Our AI Reply Generator?</h2>
-                                    <p className="text-lg leading-relaxed text-gray-500 max-w-2xl mx-auto">
-                                        Communication is hard. Whether you are facing a flooded inbox or a tricky text message, finding the right words takes time and mental energy. Our AI Reply Generator uses advanced language models to understand the context of your incoming message and craft a response that sounds exactly like you, only better.
-                                    </p>
-                                </div>
-                            </section>
-
-                            <FAQSection />
                         </main>
 
                         <Footer />
