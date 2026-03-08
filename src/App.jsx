@@ -23,6 +23,7 @@ const PricingModal = lazy(() => import('./components/modals/PricingModal'))
 const LoginModal = lazy(() => import('./components/modals/LoginModal'))
 const CreditsHistoryModal = lazy(() => import('./components/modals/CreditsHistoryModal'))
 const ProfileEditModal = lazy(() => import('./components/modals/ProfileEditModal'))
+const DeleteAccountModal = lazy(() => import('./components/modals/DeleteAccountModal'))
 
 const PENDING_INVITE_STORAGE_KEY = 'ai_reply_pending_invite_code'
 const SIGNUP_NOTICE_STORAGE_KEY_PREFIX = 'ai_reply_signup_notice_seen_'
@@ -206,11 +207,13 @@ function App() {
     const [showLoginModal, setShowLoginModal] = useState(false)
     const [showCreditsModal, setShowCreditsModal] = useState(false)
     const [showProfileModal, setShowProfileModal] = useState(false)
+    const [showDeleteAccountModal, setShowDeleteAccountModal] = useState(false)
     const [checkoutLoadingPlan, setCheckoutLoadingPlan] = useState('')
     const [checkoutError, setCheckoutError] = useState('')
     const [inviteStatus, setInviteStatus] = useState('')
     const [noticeMessage, setNoticeMessage] = useState('')
     const [deleteAccountLoading, setDeleteAccountLoading] = useState(false)
+    const [deleteAccountError, setDeleteAccountError] = useState('')
     const [profileUpdateLoading, setProfileUpdateLoading] = useState(false)
     const [profileUpdateError, setProfileUpdateError] = useState('')
 
@@ -498,21 +501,26 @@ function App() {
         }
     }, [auth.isAuthenticated, wallet, setShowLoginModal])
 
-    const handleDeleteAccount = useCallback(async () => {
+    const handleDeleteAccount = useCallback(() => {
+        setDeleteAccountError('')
+        setShowDeleteAccountModal(true)
+    }, [])
+
+    const handleDeleteAccountConfirm = useCallback(async ({ reason, reasonDetail }) => {
         if (deleteAccountLoading) return
 
-        const confirmed = window.confirm('This will permanently delete your account and data. Continue?')
-        if (!confirmed) {
-            return
-        }
-
         setDeleteAccountLoading(true)
+        setDeleteAccountError('')
         try {
-            await apiPost('delete-account', {})
+            await apiPost('delete-account', {
+                reason,
+                reason_detail: reasonDetail,
+            })
+            setShowDeleteAccountModal(false)
             await auth.signOut()
-            window.location.reload()
+            window.location.assign('/')
         } catch (error) {
-            setCheckoutError(error.message || 'Failed to delete account.')
+            setDeleteAccountError(error.message || 'Failed to delete account.')
         } finally {
             setDeleteAccountLoading(false)
         }
@@ -761,6 +769,21 @@ function App() {
                                     initialDisplayName={auth.profile?.display_name || ''}
                                     initialAvatarUrl={auth.profile?.avatar_url || ''}
                                     defaultAvatarUrl={buildDefaultAvatar(auth.user?.id)}
+                                />
+                            )}
+                            {showDeleteAccountModal && (
+                                <DeleteAccountModal
+                                    isOpen={showDeleteAccountModal}
+                                    onClose={() => {
+                                        if (deleteAccountLoading) {
+                                            return
+                                        }
+                                        setShowDeleteAccountModal(false)
+                                        setDeleteAccountError('')
+                                    }}
+                                    onConfirm={handleDeleteAccountConfirm}
+                                    loading={deleteAccountLoading}
+                                    errorMessage={deleteAccountError}
                                 />
                             )}
                         </Suspense>

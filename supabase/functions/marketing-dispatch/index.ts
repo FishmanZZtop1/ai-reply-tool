@@ -110,9 +110,15 @@ Deno.serve(async (request) => {
         }, { onConflict: 'user_id' })
 
       const resendSyncResult = await upsertResendContact(user.email)
+      const { data: walletSnapshot } = await admin
+        .from('wallets')
+        .select('permanent_credits')
+        .eq('user_id', user.id)
+        .maybeSingle()
+      const hasSignupBonus = Number(walletSnapshot?.permanent_credits ?? 0) >= 500
 
       let welcomeResult = { ok: false, reason: 'already_sent' }
-      if (!existingContact?.welcome_sent_at) {
+      if (!existingContact?.welcome_sent_at && hasSignupBonus) {
         welcomeResult = await sendMarketingEmail({
           to: user.email,
           subject: 'Welcome to AI Reply',
@@ -142,6 +148,7 @@ Deno.serve(async (request) => {
             welcome_sent: welcomeResult.ok,
             resend_synced: resendSyncResult.ok,
             resend_error: resendSyncResult.ok ? null : resendSyncResult.reason,
+            has_signup_bonus: hasSignupBonus,
           },
         })
 
