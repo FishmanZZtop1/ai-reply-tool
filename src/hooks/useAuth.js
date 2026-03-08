@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { onSessionChange, supabase, supabaseAnonKey, supabaseUrl } from '../lib/supabaseClient'
 import { apiMultipartPost } from '../lib/apiClient'
 
@@ -64,6 +64,7 @@ export function useAuth() {
     const [profile, setProfile] = useState(null)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState('')
+    const profileUserIdRef = useRef(null)
     const [oauthProviders, setOauthProviders] = useState({
         google: null,
         github: null,
@@ -75,9 +76,15 @@ export function useAuth() {
 
     const fetchProfile = useCallback(async (userId) => {
         if (!supabase || !userId) {
+            profileUserIdRef.current = null
             setProfile(null)
             return
         }
+
+        if (profileUserIdRef.current !== userId) {
+            setProfile(null)
+        }
+        profileUserIdRef.current = userId
 
         const { data, error: profileError } = await supabase
             .from('profiles')
@@ -86,6 +93,7 @@ export function useAuth() {
             .maybeSingle()
 
         if (profileError) {
+            setProfile(null)
             setError(profileError.message)
             return
         }
@@ -125,11 +133,14 @@ export function useAuth() {
 
         const unsubscribe = onSessionChange((nextSession) => {
             setSession(nextSession ?? null)
-            if (nextSession?.user?.id) {
-                fetchProfile(nextSession.user.id)
-            } else {
+            const nextUserId = nextSession?.user?.id ?? null
+            if (!nextUserId) {
+                profileUserIdRef.current = null
                 setProfile(null)
+                return
             }
+
+            fetchProfile(nextUserId)
         })
 
         return () => {
@@ -193,12 +204,24 @@ export function useAuth() {
             return { ok: false, error: disabledMessage }
         }
 
+        await supabase.auth.signOut({ scope: 'local' }).catch(() => {
+            // Best-effort: avoid stale local session before provider redirect.
+        })
+
+        const oauthOptions = {
+            redirectTo: import.meta.env.VITE_APP_URL || window.location.origin,
+            skipBrowserRedirect: true,
+        }
+
+        if (provider === 'google') {
+            oauthOptions.queryParams = {
+                prompt: 'select_account',
+            }
+        }
+
         const { data, error: authError } = await supabase.auth.signInWithOAuth({
             provider,
-            options: {
-                redirectTo: import.meta.env.VITE_APP_URL || window.location.origin,
-                skipBrowserRedirect: true,
-            },
+            options: oauthOptions,
         })
 
         if (authError) {
@@ -351,6 +374,8 @@ export function useAuth() {
         }
 
         setError('')
+        profileUserIdRef.current = null
+        setProfile(null)
         const { error: signOutError } = await supabase.auth.signOut()
         if (signOutError) {
             setError(signOutError.message)

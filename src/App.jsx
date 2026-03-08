@@ -214,12 +214,12 @@ function App() {
     const [profileUpdateLoading, setProfileUpdateLoading] = useState(false)
     const [profileUpdateError, setProfileUpdateError] = useState('')
 
-    const marketingTrackedRef = useRef(false)
+    const marketingTrackedUsersRef = useRef(new Set())
     const inviteAutoAppliedRef = useRef(false)
     const pendingAutoGenerateInFlightRef = useRef(false)
 
     const auth = useAuth()
-    const wallet = useWallet({ enabled: auth.isAuthenticated })
+    const wallet = useWallet({ enabled: auth.isAuthenticated, userId: auth.user?.id ?? null })
     const generator = useGenerator({ onSuccess: wallet.refreshWallet })
     const configOptions = useConfigOptions()
     const {
@@ -269,15 +269,19 @@ function App() {
     }, [auth.isAuthenticated, fetchLedger, showCreditsModal])
 
     useEffect(() => {
-        if (!auth.isAuthenticated || marketingTrackedRef.current) {
+        if (!auth.isAuthenticated || !auth.user?.id) {
             return
         }
 
-        marketingTrackedRef.current = true
+        if (marketingTrackedUsersRef.current.has(auth.user.id)) {
+            return
+        }
+
+        marketingTrackedUsersRef.current.add(auth.user.id)
         apiPost('marketing-dispatch', { event: 'signup' }).catch(() => {
             // Non-blocking marketing event.
         })
-    }, [auth.isAuthenticated])
+    }, [auth.isAuthenticated, auth.user?.id])
 
     useEffect(() => {
         const params = new URLSearchParams(window.location.search)

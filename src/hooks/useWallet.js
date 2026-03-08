@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ApiError, apiGet } from '../lib/apiClient'
 
-export function useWallet({ enabled }) {
+export function useWallet({ enabled, userId = null }) {
     const [wallet, setWallet] = useState(null)
     const [transactions, setTransactions] = useState([])
     const [walletLoading, setWalletLoading] = useState(false)
@@ -9,7 +9,7 @@ export function useWallet({ enabled }) {
     const [error, setError] = useState('')
 
     const refreshWallet = useCallback(async () => {
-        if (!enabled) {
+        if (!enabled || !userId) {
             setWallet(null)
             return
         }
@@ -29,10 +29,10 @@ export function useWallet({ enabled }) {
         } finally {
             setWalletLoading(false)
         }
-    }, [enabled])
+    }, [enabled, userId])
 
     const fetchLedger = useCallback(async (cursor = null) => {
-        if (!enabled) {
+        if (!enabled || !userId) {
             setTransactions([])
             return []
         }
@@ -57,16 +57,18 @@ export function useWallet({ enabled }) {
         } finally {
             setLedgerLoading(false)
         }
-    }, [enabled])
+    }, [enabled, userId])
 
     useEffect(() => {
-        if (enabled) {
+        if (enabled && userId) {
+            setWallet(null)
+            setTransactions([])
             refreshWallet()
         } else {
             setWallet(null)
             setTransactions([])
         }
-    }, [enabled, refreshWallet])
+    }, [enabled, refreshWallet, userId])
 
     return useMemo(() => ({
         wallet,

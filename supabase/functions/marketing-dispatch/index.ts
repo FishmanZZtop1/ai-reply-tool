@@ -51,10 +51,10 @@ async function upsertResendContact(email: string) {
   const audienceId = Deno.env.get('RESEND_AUDIENCE_ID')
 
   if (!resendApiKey || !audienceId) {
-    return
+    return { ok: false, reason: 'missing_resend_config' }
   }
 
-  await fetch('https://api.resend.com/contacts', {
+  const response = await fetch(`https://api.resend.com/audiences/${audienceId}/contacts`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${resendApiKey}`,
@@ -62,10 +62,18 @@ async function upsertResendContact(email: string) {
     },
     body: JSON.stringify({
       email,
-      audience_id: audienceId,
       unsubscribed: false,
     }),
   })
+
+  if (response.ok || response.status === 409) {
+    return { ok: true }
+  }
+
+  return {
+    ok: false,
+    reason: await response.text(),
+  }
 }
 
 Deno.serve(async (request) => {
@@ -87,6 +95,12 @@ Deno.serve(async (request) => {
         return errorResponse('No email address available.', 400, 'missing_email')
       }
 
+      const { data: existingContact } = await admin
+        .from('marketing_contacts')
+        .select('welcome_sent_at')
+        .eq('user_id', user.id)
+        .maybeSingle()
+
       await admin
         .from('marketing_contacts')
         .upsert({
@@ -95,19 +109,22 @@ Deno.serve(async (request) => {
           consent_status: 'subscribed',
         }, { onConflict: 'user_id' })
 
-      await upsertResendContact(user.email)
+      const resendSyncResult = await upsertResendContact(user.email)
 
-      const welcomeResult = await sendMarketingEmail({
-        to: user.email,
-        subject: 'Welcome to AI Reply',
-        html: `
-          <div style="font-family: Inter, Arial, sans-serif; line-height: 1.6; color: #111827;">
-            <h2>Welcome to AI Reply</h2>
-            <p>You now have 500 free credits. Generate your first reply in seconds.</p>
-            <p><a href="${Deno.env.get('APP_BASE_URL') || 'https://aireplytool.com'}" style="display:inline-block;padding:10px 16px;background:#E413A2;color:#fff;border-radius:8px;text-decoration:none;">Start Generating</a></p>
-          </div>
-        `,
-      })
+      let welcomeResult = { ok: false, reason: 'already_sent' }
+      if (!existingContact?.welcome_sent_at) {
+        welcomeResult = await sendMarketingEmail({
+          to: user.email,
+          subject: 'Welcome to AI Reply',
+          html: `
+            <div style="font-family: Inter, Arial, sans-serif; line-height: 1.6; color: #111827;">
+              <h2>Welcome to AI Reply</h2>
+              <p>You now have 500 free credits. Generate your first reply in seconds.</p>
+              <p><a href="${Deno.env.get('APP_BASE_URL') || 'https://aireplytool.com'}" style="display:inline-block;padding:10px 16px;background:#E413A2;color:#fff;border-radius:8px;text-decoration:none;">Start Generating</a></p>
+            </div>
+          `,
+        })
+      }
 
       if (welcomeResult.ok) {
         await admin
@@ -121,10 +138,18 @@ Deno.serve(async (request) => {
         .insert({
           user_id: user.id,
           event_name: 'signup',
-          payload: { welcome_sent: welcomeResult.ok },
+          payload: {
+            welcome_sent: welcomeResult.ok,
+            resend_synced: resendSyncResult.ok,
+            resend_error: resendSyncResult.ok ? null : resendSyncResult.reason,
+          },
         })
 
-      return jsonResponse({ ok: true, welcome_sent: welcomeResult.ok })
+      return jsonResponse({
+        ok: true,
+        welcome_sent: welcomeResult.ok,
+        resend_synced: resendSyncResult.ok,
+      })
     }
 
     if (body.mode === 'scheduled') {
