@@ -60,3 +60,6 @@ verify_jwt = false
 
 [functions."upload-avatar"]
 verify_jwt = false
+
+[functions."supabase-signup-webhook"]
+verify_jwt = false
