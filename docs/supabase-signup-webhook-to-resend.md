@@ -1,6 +1,6 @@
-# Supabase 注册用户邮箱捕获（DB Webhook -> Edge Function -> Resend）
+# Supabase 注册用户邮箱捕获（DB Trigger -> Edge Function -> Resend）
 
-这个方案不影响现有网站运行，因为它只新增一个独立 Edge Function。
+这个方案不影响现有网站运行，只是新增一个独立 Edge Function，并在数据库增加一个注册触发器。
 
 ## 已实现的函数
 - 函数名：`supabase-signup-webhook`
@@ -8,7 +8,7 @@
 - 访问 URL（生产）：
   `https://xlkibhktnsorttppzdby.supabase.co/functions/v1/supabase-signup-webhook`
 
-函数逻辑：
+Edge Function 逻辑：
 1. 校验 `x-supabase-webhook-secret` 是否等于 `WEBHOOK_SHARED_SECRET`
 2. 读取 `record.email`
 3. 调用 Resend Audience API 写入联系人
@@ -31,15 +31,16 @@ supabase secrets set \
 supabase functions deploy supabase-signup-webhook --no-verify-jwt
 ```
 
-## 创建 Database Webhook（Supabase 控制台）
-推荐监听：`auth.users` 的 `INSERT`
+## 数据库触发器（已自动创建）
+当前项目已创建触发器：
 
+- Trigger: `ai_reply_auth_users_signup_webhook`
 - Table: `auth.users`
-- Events: `INSERT`
-- Method: `POST`
-- URL: `https://xlkibhktnsorttppzdby.supabase.co/functions/v1/supabase-signup-webhook`
-- Headers:
-  - `x-supabase-webhook-secret: <与你 WEBHOOK_SHARED_SECRET 相同>`
+- Event: `AFTER INSERT`
+
+触发器会在新用户创建时，自动把邮箱转发到：
+
+- `https://xlkibhktnsorttppzdby.supabase.co/functions/v1/supabase-signup-webhook`
 
 ## 快速测试
 ```bash
