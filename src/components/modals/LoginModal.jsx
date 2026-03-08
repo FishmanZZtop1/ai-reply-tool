@@ -26,7 +26,7 @@ const LoginModal = memo(function LoginModal({
             name: 'Google',
             key: 'google',
             icon: (
-                <svg className="w-5 h-5" viewBox="0 0 24 24">
+                <svg className="w-5 h-5" viewBox="0 0 24 24" aria-hidden="true">
                     <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
                     <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
                     <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
@@ -38,7 +38,7 @@ const LoginModal = memo(function LoginModal({
             name: 'GitHub',
             key: 'github',
             icon: (
-                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                     <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z" />
                 </svg>
             ),
@@ -47,8 +47,9 @@ const LoginModal = memo(function LoginModal({
             name: 'Apple',
             key: 'apple',
             icon: (
-                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M16.37 12.02c.02 2.12 1.86 2.83 1.88 2.84-.02.05-.29.98-.95 1.94-.57.83-1.16 1.66-2.09 1.67-.91.02-1.2-.54-2.25-.54-1.05 0-1.37.53-2.23.56-.89.03-1.56-.9-2.13-1.72-1.17-1.68-2.06-4.74-.86-6.83.6-1.03 1.67-1.68 2.83-1.7.88-.02 1.72.59 2.25.59.53 0 1.54-.73 2.6-.62.44.02 1.68.18 2.48 1.35-.06.04-1.48.86-1.47 2.46ZM14.9 6.29c.48-.58.81-1.39.72-2.19-.69.03-1.53.46-2.03 1.04-.45.52-.84 1.35-.73 2.14.77.06 1.56-.39 2.04-.99Z" />
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true">
+                    <path d="M11.182.008c0 1.5-.605 2.826-1.463 3.563-.877.76-1.958 1.218-3.025 1.145-.096-1.402.562-2.758 1.39-3.596.827-.847 2.232-1.456 3.098-1.112z" />
+                    <path d="M13.91 12.39c-.14.33-.303.657-.49.97-.255.433-.464.733-.626.902-.25.276-.518.416-.807.424-.208 0-.461-.06-.756-.18-.297-.119-.57-.179-.82-.179-.26 0-.54.06-.842.18-.302.12-.545.184-.732.192-.278.012-.551-.132-.82-.432-.171-.185-.39-.496-.658-.932-.288-.467-.525-1.01-.711-1.63-.2-.67-.3-1.319-.3-1.947 0-.719.155-1.34.464-1.866.243-.422.568-.754.975-.996a2.62 2.62 0 0 1 1.314-.376c.23 0 .532.071.906.212.373.142.612.212.718.212.08 0 .352-.085.816-.255.438-.158.807-.224 1.107-.198.814.066 1.425.388 1.833.966-.73.442-1.092 1.061-1.086 1.857.006.62.23 1.136.67 1.548.2.19.423.336.669.439-.053.154-.109.301-.167.44z" />
                 </svg>
             ),
         },
@@ -56,7 +57,7 @@ const LoginModal = memo(function LoginModal({
             name: 'X',
             key: 'x',
             icon: (
-                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 1200 1227">
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 1200 1227" aria-hidden="true">
                     <path d="M714.163 519.284L1160.89 0H1055.47L667.137 451.86L357.328 0H0L468.492 682.446L0 1226.37H105.42L515.239 750.444L842.672 1226.37H1200L714.137 519.284H714.163ZM568.685 688.44L521.291 620.466L144.011 79.6944H306.615L611.135 516.227L658.529 584.201L1055.52 1152.45H892.918L568.685 688.466V688.44Z" />
                 </svg>
             ),
@@ -209,7 +210,7 @@ const LoginModal = memo(function LoginModal({
                                     key={button.name}
                                     onClick={() => isEnabled && onOAuthLogin?.(button.name)}
                                     disabled={!isEnabled}
-                                    className={`w-full py-3 px-4 rounded-xl font-semibold text-sm border flex items-center justify-center gap-3 ${
+                                    className={`w-full py-3 px-4 rounded-xl font-semibold text-sm border grid grid-cols-[1.5rem_minmax(0,1fr)] items-center gap-3 text-left ${
                                         isEnabled
                                             ? 'border-gray-200 text-gray-700 bg-white'
                                             : 'border-gray-100 text-gray-400 bg-gray-50 cursor-not-allowed'
@@ -223,8 +224,12 @@ const LoginModal = memo(function LoginModal({
                                     whileTap={{ scale: 0.98 }}
                                     transition={{ type: 'spring', stiffness: 400, damping: 25 }}
                                 >
-                                    {button.icon}
-                                    {isEnabled ? `Continue with ${button.name}` : `${button.name} (Coming Soon)`}
+                                    <span className="inline-flex w-6 h-6 items-center justify-center">
+                                        {button.icon}
+                                    </span>
+                                    <span className="block text-left">
+                                        {isEnabled ? `Continue with ${button.name}` : `${button.name} (Coming Soon)`}
+                                    </span>
                                 </motion.button>
                                 )
                             })}
