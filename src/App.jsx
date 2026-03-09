@@ -473,6 +473,13 @@ function App() {
             if (error instanceof ApiError && error.status === 401) {
                 setShowLoginModal(true)
             }
+            if (
+                error instanceof ApiError
+                && error.code === 'creem_checkout_forbidden'
+            ) {
+                setCheckoutError('Payment is temporarily unavailable (Creem 403). We are fixing provider credentials/mode now. Please retry in a few minutes.')
+                return
+            }
             setCheckoutError(error.message)
         } finally {
             setCheckoutLoadingPlan('')
@@ -728,6 +735,7 @@ function App() {
                                     }}
                                     onCheckout={handleCheckout}
                                     checkoutLoadingPlan={checkoutLoadingPlan}
+                                    checkoutError={checkoutError}
                                 />
                             )}
                             {showLoginModal && (

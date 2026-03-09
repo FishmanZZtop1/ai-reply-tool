@@ -99,13 +99,24 @@ Deno.serve(async (request) => {
     const creemData = await creemResponse.json().catch(() => ({}))
 
     if (!creemResponse.ok) {
+      const creemStatus = Number(creemData?.status || creemResponse.status)
+      const traceId = String(creemData?.trace_id || '')
+      const isForbidden = creemStatus === 403 || creemResponse.status === 403
+      const defaultMessage = isForbidden
+        ? 'Creem returned 403 Forbidden. Check CREEM_API_KEY, API mode (test/prod), and product ownership in the same Creem account.'
+        : 'Failed to create Creem checkout.'
+
       return errorResponse(
         creemData?.message
           || creemData?.error?.message
-          || 'Failed to create Creem checkout.',
+          || defaultMessage,
         502,
-        'creem_checkout_failed',
-        creemData,
+        isForbidden ? 'creem_checkout_forbidden' : 'creem_checkout_failed',
+        {
+          creem_status: creemStatus,
+          trace_id: traceId || null,
+          raw: creemData,
+        },
       )
     }
 

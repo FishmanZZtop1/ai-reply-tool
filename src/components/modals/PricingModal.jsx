@@ -75,7 +75,7 @@ function PricingCard({ children, className, isPopular, ...props }) {
     )
 }
 
-const PricingModal = memo(function PricingModal({ isOpen, onClose, onCheckout, checkoutLoadingPlan }) {
+const PricingModal = memo(function PricingModal({ isOpen, onClose, onCheckout, checkoutLoadingPlan, checkoutError = '' }) {
     const [monthlyType, setMonthlyType] = useState('subscription')
     const [countdown, setCountdown] = useState({ days: 14, hours: 23, minutes: 59, seconds: 59 })
 
@@ -149,6 +149,18 @@ const PricingModal = memo(function PricingModal({ isOpen, onClose, onCheckout, c
                             <span className="text-xs font-bold uppercase tracking-widest text-[#E413A2] mb-3 block">Pricing</span>
                             <h2 className="text-3xl font-bold text-gray-900">Choose Your Plan</h2>
                         </motion.div>
+
+                        {checkoutError && (
+                            <motion.div
+                                role="alert"
+                                className="mb-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+                                initial={{ opacity: 0, y: 8 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ type: 'spring', ...springs.snappy }}
+                            >
+                                {checkoutError}
+                            </motion.div>
+                        )}
 
                         {/* Plans Grid */}
                         <div className="grid md:grid-cols-3 gap-5">
